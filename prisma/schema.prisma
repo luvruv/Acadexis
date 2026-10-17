@@ -5,3 +5,142 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------- Enums ----------
+
+enum Role {
+  ADMIN
+  COORDINATOR
+  CO_TEACHER
+}
+
+enum OutcomeType {
+  PEO
+  PO
+  PSO
+}
+
+// Where the content of a template section comes from
+enum SectionSource {
+  PROGRAM_DATA
+  COURSE_SETUP
+  CONTRIBUTOR
+  COMPUTED
+}
+
+// ---------- Users and audit ----------
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String
+  passwordHash String
+  role         Role       @default(CO_TEACHER)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+// ---------- University, school, program ----------
+
+model University {
+  id                 String              @id @default(cuid())
+  name               String              @unique
+  vision             String
+  mission            String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  schools            School[]
+  graduateAttributes GraduateAttribute[]
+}
+
+model GraduateAttribute {
+  id           String     @id @default(cuid())
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  position     Int
+  text         String
+
+  @@index([universityId])
+}
+
+model School {
+  id           String     @id @default(cuid())
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  name         String
+  vision       String
+  mission      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  programs     Program[]
+
+  @@unique([universityId, name])
+}
+
+model Program {
+  id        String           @id @default(cuid())
+  schoolId  String
+  school    School           @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  name      String
+  code      String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  outcomes  ProgramOutcome[]
+
+  @@unique([schoolId, code])
+}
+
+// PEOs, POs and PSOs of a program, one row each
+model ProgramOutcome {
+  id          String      @id @default(cuid())
+  programId   String
+  program     Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  type        OutcomeType
+  code        String
+  description String
+  position    Int
+
+  @@unique([programId, code])
+  @@index([programId, type])
+}
+
+// ---------- Course file template ----------
+
+model TemplateVersion {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String?
+  isActive    Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  sections    TemplateSection[]
+}
+
+model TemplateSection {
+  id                String          @id @default(cuid())
+  templateVersionId String
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  number            Int
+  title             String
+  formKey           String
+  source            SectionSource
+  isRequired        Boolean         @default(true)
+
+  @@unique([templateVersionId, number])
+}
