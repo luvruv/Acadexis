@@ -8,9 +8,15 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 try {
-  const users = await prisma.user.count();
-  const templates = await prisma.templateVersion.count();
-  console.log("Prisma Client works. Users:", users, "| Template versions:", templates);
+  const counts = {
+    users: await prisma.user.count(),
+    templateVersions: await prisma.templateVersion.count(),
+    courses: await prisma.course.count(),
+    courseFiles: await prisma.courseFile.count(),
+    courseFileSections: await prisma.courseFileSection.count(),
+    attachments: await prisma.attachment.count(),
+  };
+  console.log("Prisma Client works. Row counts:", counts);
 } catch (error) {
   console.error("Prisma check failed:", error.message);
   process.exitCode = 1;

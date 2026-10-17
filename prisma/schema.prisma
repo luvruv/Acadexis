@@ -28,18 +28,44 @@ enum SectionSource {
   COMPUTED
 }
 
+// Course file states, from the state-transition diagram
+enum CourseFileStatus {
+  CREATED
+  IN_PROGRESS
+  UNDER_REVIEW
+  CHANGES_REQUESTED
+  LOCKED
+  EXPORTED
+}
+
+// Status of one section inside a course file
+enum SectionStatus {
+  PENDING
+  SUBMITTED
+  CHANGES_REQUESTED
+  APPROVED
+}
+
 // ---------- Users and audit ----------
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   name         String
   passwordHash String
-  role         Role       @default(CO_TEACHER)
-  isActive     Boolean    @default(true)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  auditLogs    AuditLog[]
+  role         Role     @default(CO_TEACHER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs           AuditLog[]
+  coordinatedFiles    CourseFile[]        @relation("FileCoordinator")
+  lockedFiles         CourseFile[]        @relation("FileLockedBy")
+  assignedSections    CourseFileSection[] @relation("SectionAssignee")
+  assignmentsReceived SectionAssignment[] @relation("AssignmentAssignee")
+  assignmentsMade     SectionAssignment[] @relation("AssignmentAssigner")
+  reviewComments      ReviewComment[]
+  attachments         Attachment[]
 }
 
 model AuditLog {
@@ -103,19 +129,21 @@ model Program {
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
   outcomes  ProgramOutcome[]
+  courses   Course[]
 
   @@unique([schoolId, code])
 }
 
 // PEOs, POs and PSOs of a program, one row each
 model ProgramOutcome {
-  id          String      @id @default(cuid())
+  id          String        @id @default(cuid())
   programId   String
-  program     Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program     Program       @relation(fields: [programId], references: [id], onDelete: Cascade)
   type        OutcomeType
   code        String
   description String
   position    Int
+  coMappings  CoPoMapping[]
 
   @@unique([programId, code])
   @@index([programId, type])
@@ -130,17 +158,181 @@ model TemplateVersion {
   isActive    Boolean           @default(true)
   createdAt   DateTime          @default(now())
   sections    TemplateSection[]
+  courseFiles CourseFile[]
 }
 
 model TemplateSection {
-  id                String          @id @default(cuid())
+  id                 String              @id @default(cuid())
+  templateVersionId  String
+  templateVersion    TemplateVersion     @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  number             Int
+  title              String
+  formKey            String
+  source             SectionSource
+  isRequired         Boolean             @default(true)
+  courseFileSections CourseFileSection[]
+
+  @@unique([templateVersionId, number])
+}
+
+// ---------- Courses and course files ----------
+
+model Course {
+  id          String       @id @default(cuid())
+  programId   String
+  program     Program      @relation(fields: [programId], references: [id], onDelete: Restrict)
+  code        String
+  title       String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  courseFiles CourseFile[]
+
+  @@unique([programId, code])
+}
+
+model CourseFile {
+  id                String           @id @default(cuid())
+  courseId          String
+  course            Course           @relation(fields: [courseId], references: [id], onDelete: Restrict)
   templateVersionId String
-  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  templateVersion   TemplateVersion  @relation(fields: [templateVersionId], references: [id], onDelete: Restrict)
+  coordinatorId     String
+  coordinator       User             @relation("FileCoordinator", fields: [coordinatorId], references: [id], onDelete: Restrict)
+  semester          String
+  academicYear      String
+  batch             String?
+  revision          Int              @default(1)
+  status            CourseFileStatus @default(CREATED)
+  lockedAt          DateTime?
+  lockedById        String?
+  lockedBy          User?            @relation("FileLockedBy", fields: [lockedById], references: [id], onDelete: SetNull)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  outcomes CourseOutcome[]
+  students Student[]
+  sections CourseFileSection[]
+
+  @@unique([courseId, academicYear, semester, revision])
+  @@index([coordinatorId])
+  @@index([status])
+}
+
+model CourseOutcome {
+  id           String        @id @default(cuid())
+  courseFileId String
+  courseFile   CourseFile    @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  code         String
+  description  String
+  position     Int
+  poMappings   CoPoMapping[]
+
+  @@unique([courseFileId, code])
+}
+
+// CO-PO / CO-PSO matrix cell. level is 1 (low), 2 (moderate) or 3 (substantial);
+// the range is validated in application code.
+model CoPoMapping {
+  id               String         @id @default(cuid())
+  courseOutcomeId  String
+  courseOutcome    CourseOutcome  @relation(fields: [courseOutcomeId], references: [id], onDelete: Cascade)
+  programOutcomeId String
+  programOutcome   ProgramOutcome @relation(fields: [programOutcomeId], references: [id], onDelete: Restrict)
+  level            Int
+
+  @@unique([courseOutcomeId, programOutcomeId])
+}
+
+model Student {
+  id           String     @id @default(cuid())
+  courseFileId String
+  courseFile   CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  enrollmentNo String
+  rollNo       String?
+  name         String
+  classGroup   String?
+
+  @@unique([courseFileId, enrollmentNo])
+  @@index([courseFileId])
+}
+
+// ---------- Sections of a course file ----------
+
+// One row per section inside one course file. Copied from the template when the
+// course file is created. A coordinator can add extra (custom) sections.
+model CourseFileSection {
+  id                String           @id @default(cuid())
+  courseFileId      String
+  courseFile        CourseFile       @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  templateSectionId String?
+  templateSection   TemplateSection? @relation(fields: [templateSectionId], references: [id], onDelete: SetNull)
   number            Int
   title             String
   formKey           String
   source            SectionSource
-  isRequired        Boolean         @default(true)
+  isRequired        Boolean          @default(true)
+  isCustom          Boolean          @default(false)
+  status            SectionStatus    @default(PENDING)
+  content           Json?
+  // Incremented on every save so we can reject stale concurrent edits
+  version           Int              @default(1)
+  assigneeId        String?
+  assignee          User?            @relation("SectionAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  submittedAt       DateTime?
+  approvedAt        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  @@unique([templateVersionId, number])
+  assignments SectionAssignment[]
+  comments    ReviewComment[]
+  attachments Attachment[]
+
+  @@unique([courseFileId, number])
+  @@index([assigneeId])
+  @@index([courseFileId, status])
+}
+
+// History of who a section was assigned to. The current assignee lives on
+// CourseFileSection.assigneeId so each section has exactly one at a time.
+model SectionAssignment {
+  id           String            @id @default(cuid())
+  sectionId    String
+  section      CourseFileSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  assigneeId   String
+  assignee     User              @relation("AssignmentAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  assignedById String
+  assignedBy   User              @relation("AssignmentAssigner", fields: [assignedById], references: [id], onDelete: Restrict)
+  assignedAt   DateTime          @default(now())
+
+  @@index([sectionId])
+  @@index([assigneeId])
+}
+
+model ReviewComment {
+  id              String            @id @default(cuid())
+  sectionId       String
+  section         CourseFileSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  authorId        String
+  author          User              @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  body            String
+  requestsChanges Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+
+  @@index([sectionId])
+}
+
+// Evidence files. Only the private storage path is kept here, never a public URL.
+model Attachment {
+  id           String            @id @default(cuid())
+  sectionId    String
+  section      CourseFileSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  uploadedById String
+  uploadedBy   User              @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  originalName String
+  storagePath  String
+  mimeType     String
+  sizeBytes    Int
+  createdAt    DateTime          @default(now())
+
+  @@index([sectionId])
 }
