@@ -5,6 +5,7 @@ export const AUDIT_ACTIONS = {
   LOGIN_FAILED: "LOGIN_FAILED",
   LOGIN_BLOCKED: "LOGIN_BLOCKED",
   ACCESS_DENIED: "ACCESS_DENIED",
+  PROGRAM_DATA_UPDATED: "PROGRAM_DATA_UPDATED",
 };
 
 // Never throws: a failed audit write must not break the user's request.
