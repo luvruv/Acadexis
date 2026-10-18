@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { HttpError } from "@/lib/http";
+import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 
 export const ROLES = {
   ADMIN: "ADMIN",
@@ -22,11 +23,8 @@ export const ROLE_HOME = {
   CO_TEACHER: "/teacher",
 };
 
-// The single source of truth for "who is the current user".
-// The login cookie only tells us an id. We re-read the user from the database
-// every time, so a disabled or deleted account loses access immediately and a
-// changed role takes effect immediately. passwordHash is never selected.
-// cache() makes repeated calls within one request cost a single database query.
+// Re-reads the user from the database on every request (once per request).
+// passwordHash is never selected.
 export const getCurrentUser = cache(async () => {
   const session = await auth();
   const userId = session?.user?.id;
@@ -45,6 +43,15 @@ export function hasRole(user, allowedRoles) {
   return Boolean(user) && allowedRoles.includes(user.role);
 }
 
+async function logDenied(user, allowedRoles) {
+  await logAudit({
+    userId: user.id,
+    action: AUDIT_ACTIONS.ACCESS_DENIED,
+    entityType: "Permission",
+    details: { requiredRoles: allowedRoles, userRole: user.role },
+  });
+}
+
 // ----- For pages: redirect when access is not allowed -----
 
 export async function requireUser() {
@@ -55,7 +62,10 @@ export async function requireUser() {
 
 export async function requireRole(...allowedRoles) {
   const user = await requireUser();
-  if (!hasRole(user, allowedRoles)) redirect("/forbidden");
+  if (!hasRole(user, allowedRoles)) {
+    await logDenied(user, allowedRoles);
+    redirect("/forbidden");
+  }
   return user;
 }
 
@@ -70,6 +80,7 @@ export async function requireUserOrThrow() {
 export async function requireRoleOrThrow(...allowedRoles) {
   const user = await requireUserOrThrow();
   if (!hasRole(user, allowedRoles)) {
+    await logDenied(user, allowedRoles);
     throw new HttpError(403, "You do not have permission to do this.");
   }
   return user;

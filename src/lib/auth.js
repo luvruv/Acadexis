@@ -3,9 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validation/auth";
+import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 
-// When an email does not exist we still run a bcrypt comparison against this
-// hash, so "unknown email" and "wrong password" take about the same time.
 let dummyHash;
 async function getDummyHash() {
   dummyHash ??= await bcrypt.hash("not-a-real-password", 12);
@@ -43,7 +42,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    // Runs when the token is created or read. "user" only exists at sign-in.
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -51,12 +49,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    // Shapes what auth() returns to our pages. Display use only: server-side
-    // permission checks (Step 9) re-read the role from the database.
     session({ session, token }) {
       session.user.id = token.id;
       session.user.role = token.role;
       return session;
+    },
+  },
+  events: {
+    async signIn({ user }) {
+      await logAudit({
+        userId: user.id,
+        action: AUDIT_ACTIONS.LOGIN_SUCCESS,
+        entityType: "User",
+        entityId: user.id,
+      });
     },
   },
 });
