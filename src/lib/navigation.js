@@ -1,7 +1,11 @@
 const DASHBOARD = { href: "/dashboard", label: "Dashboard" };
 
 const NAV_BY_ROLE = {
-  ADMIN: [DASHBOARD, { href: "/admin/program", label: "Program setup" }],
+  ADMIN: [
+    DASHBOARD,
+    { href: "/admin/program", label: "Program setup" },
+    { href: "/admin/outcomes", label: "PEOs / POs / PSOs" },
+  ],
   COORDINATOR: [DASHBOARD, { href: "/coordinator", label: "My course files" }],
   CO_TEACHER: [DASHBOARD, { href: "/teacher", label: "My assignments" }],
 };
