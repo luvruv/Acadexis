@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   USER_PASSWORD_RESET: "USER_PASSWORD_RESET",
   COURSE_FILE_CREATED: "COURSE_FILE_CREATED",
   COURSE_OUTCOMES_SAVED: "COURSE_OUTCOMES_SAVED",
+  STUDENTS_SAVED: "STUDENTS_SAVED",
 };
 
 // Never throws: a failed audit write must not break the user's request.

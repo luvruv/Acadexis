@@ -52,12 +52,18 @@ export default async function CourseFileDetailPage({ params }) {
         </p>
       </div>
 
-            <div>
+                  <div>
         <Link
           href={`/coordinator/course-files/${courseFile.id}/outcomes`}
           className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
         >
           Course outcomes and CO-PO mapping
+        </Link>
+        <Link
+          href={`/coordinator/course-files/${courseFile.id}/students`}
+          className="ml-2 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Student list
         </Link>
       </div>
 
