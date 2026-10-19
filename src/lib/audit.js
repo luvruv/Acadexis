@@ -13,6 +13,7 @@ export const AUDIT_ACTIONS = {
   COURSE_FILE_CREATED: "COURSE_FILE_CREATED",
   COURSE_OUTCOMES_SAVED: "COURSE_OUTCOMES_SAVED",
   STUDENTS_SAVED: "STUDENTS_SAVED",
+  SECTIONS_ASSIGNED: "SECTIONS_ASSIGNED",
 };
 
 // Never throws: a failed audit write must not break the user's request.

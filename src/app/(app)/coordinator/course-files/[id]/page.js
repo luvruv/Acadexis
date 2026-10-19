@@ -2,12 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import {
-  COURSE_FILE_STATUS_LABELS,
-  SECTION_SOURCE_LABELS,
-  SECTION_STATUS_LABELS,
-} from "@/lib/labels";
+import { COURSE_FILE_STATUS_LABELS } from "@/lib/labels";
+import { isAssignable, SECTION_PAGE_SEGMENTS } from "@/lib/sections";
 import StatusBadge from "@/components/status-badge";
+import AssignmentsTable from "./assignments-table";
 
 export const metadata = { title: "Course file | Acadexis" };
 
@@ -28,6 +26,38 @@ export default async function CourseFileDetailPage({ params }) {
     },
   });
   if (!courseFile) notFound();
+
+  const candidateUsers = await prisma.user.findMany({
+    where: { isActive: true, OR: [{ role: "CO_TEACHER" }, { id: user.id }] },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  const candidates = candidateUsers.map((candidate) => ({
+    id: candidate.id,
+    label: candidate.id === user.id ? `${candidate.name} (me)` : candidate.name,
+  }));
+
+  const sections = courseFile.sections.map((section) => {
+    const segment = SECTION_PAGE_SEGMENTS[section.formKey];
+    return {
+      id: section.id,
+      number: section.number,
+      title: section.title,
+      isRequired: section.isRequired,
+      source: section.source,
+      status: section.status,
+      assigneeId: section.assigneeId,
+      assignable: isAssignable(section),
+      fixedLabel: section.source === "COURSE_SETUP" ? "Coordinator" : "System",
+      openHref: segment ? `/coordinator/course-files/${id}/${segment}` : null,
+    };
+  });
+
+  const assignableCount = sections.filter((section) => section.assignable).length;
+  const assignedCount = sections.filter(
+    (section) => section.assignable && section.assigneeId
+  ).length;
+  const readOnly = courseFile.status === "LOCKED" || courseFile.status === "EXPORTED";
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -50,9 +80,12 @@ export default async function CourseFileDetailPage({ params }) {
           {courseFile.batch ? ` · ${courseFile.batch}` : ""} ·{" "}
           {courseFile.templateVersion.name}
         </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {assignedCount} of {assignableCount} assignable sections have an owner.
+        </p>
       </div>
 
-                  <div>
+      <div className="flex flex-wrap gap-2">
         <Link
           href={`/coordinator/course-files/${courseFile.id}/outcomes`}
           className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
@@ -61,43 +94,18 @@ export default async function CourseFileDetailPage({ params }) {
         </Link>
         <Link
           href={`/coordinator/course-files/${courseFile.id}/students`}
-          className="ml-2 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+          className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
         >
           Student list
         </Link>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50 text-left">
-            <tr>
-              <th className="p-3">#</th>
-              <th className="p-3">Section</th>
-              <th className="p-3">Filled by</th>
-              <th className="p-3">Status</th>
-              <th className="p-3">Assigned to</th>
-            </tr>
-          </thead>
-          <tbody>
-            {courseFile.sections.map((section) => (
-              <tr key={section.id} className="border-t align-top">
-                <td className="p-3">{section.number}</td>
-                <td className="p-3">
-                  {section.title}
-                  {!section.isRequired && (
-                    <span className="ml-2 text-xs text-muted-foreground">(optional)</span>
-                  )}
-                </td>
-                <td className="p-3">{SECTION_SOURCE_LABELS[section.source]}</td>
-                <td className="p-3">
-                  <StatusBadge status={section.status} labels={SECTION_STATUS_LABELS} />
-                </td>
-                <td className="p-3">{section.assignee?.name ?? "Unassigned"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <AssignmentsTable
+        courseFileId={courseFile.id}
+        sections={sections}
+        candidates={candidates}
+        readOnly={readOnly}
+      />
     </div>
   );
 }
