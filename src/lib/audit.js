@@ -10,6 +10,7 @@ export const AUDIT_ACTIONS = {
   USER_ROLE_CHANGED: "USER_ROLE_CHANGED",
   USER_STATUS_CHANGED: "USER_STATUS_CHANGED",
   USER_PASSWORD_RESET: "USER_PASSWORD_RESET",
+  COURSE_FILE_CREATED: "COURSE_FILE_CREATED",
 };
 
 // Never throws: a failed audit write must not break the user's request.
