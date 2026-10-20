@@ -6,7 +6,11 @@ import { ROLES } from "@/lib/permissions";
 import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { EDITABLE_SECTION_STATUSES } from "@/lib/sections";
-import { buildContentSchema, getFormDefinition } from "@/section-forms/registry";
+import {
+  buildContentSchema,
+  extractRawContent,
+  getFormDefinition,
+} from "@/section-forms/registry";
 
 export async function saveSectionAction(previousState, formData) {
   return runAction([ROLES.CO_TEACHER, ROLES.COORDINATOR], async (user) => {
@@ -37,10 +41,7 @@ export async function saveSectionAction(previousState, formData) {
       return { ok: false, message: "This section has no form yet." };
     }
 
-    const raw = {};
-    for (const field of definition.fields) {
-      raw[field.name] = String(formData.get(field.name) ?? "");
-    }
+        const raw = extractRawContent(definition, formData);
     const parsed = buildContentSchema(definition, { submit: submitting }).safeParse(raw);
     if (!parsed.success) {
       return { ok: false, message: parsed.error.issues[0].message };
