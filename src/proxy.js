@@ -18,6 +18,7 @@ export const config = {
     "/admin/:path*",
     "/coordinator/:path*",
     "/teacher/:path*",
+    "/sections/:path*",
     "/repository/:path*",
   ],
 };
