@@ -2,9 +2,11 @@ import { z } from "zod";
 
 const MAX_FIELD_LENGTH = 10000;
 
-// One entry per section type (formKey). Add new text-based sections here.
-// field: { name, label, help?, required, rows }
-// atLeastOne: for optional sections, at least one field must be filled to submit.
+// One entry per section type (formKey). Add new sections here.
+// field: { name, label, required, rows }
+// atLeastOne: at least one field must be filled to submit.
+// attachments: { min }: the section accepts uploaded files; "min" is how many
+//   are needed before it can be submitted (0 = optional).
 const FORMS = {
   "course-description": {
     fields: [
@@ -12,7 +14,26 @@ const FORMS = {
       { name: "objectives", label: "Course objectives", required: true, rows: 6 },
     ],
   },
+  "midsem-papers": {
+    attachments: { min: 1 },
+    fields: [
+      { name: "notes", label: "Notes (optional)", required: false, rows: 4 },
+    ],
+  },
+  "evaluated-submissions": {
+    attachments: { min: 1 },
+    fields: [
+      {
+        name: "weakStudents",
+        label: "Identification of weak students",
+        required: true,
+        rows: 6,
+      },
+      { name: "notes", label: "Notes (optional)", required: false, rows: 4 },
+    ],
+  },
   "midterm-reflections": {
+    attachments: { min: 0 },
     fields: [
       {
         name: "reflections",
@@ -29,6 +50,7 @@ const FORMS = {
     ],
   },
   interventions: {
+    attachments: { min: 0 },
     fields: [
       { name: "slowPerformers", label: "Interventions for slow performers", required: true, rows: 5 },
       { name: "advancedLearners", label: "Interventions for advanced learners", required: true, rows: 5 },
@@ -38,6 +60,12 @@ const FORMS = {
         required: false,
         rows: 4,
       },
+    ],
+  },
+  "endsem-papers": {
+    attachments: { min: 1 },
+    fields: [
+      { name: "notes", label: "Notes (optional)", required: false, rows: 4 },
     ],
   },
   "direct-feedback": {
@@ -51,6 +79,7 @@ const FORMS = {
     ],
   },
   "feedback-corrective-actions": {
+    attachments: { min: 0 },
     fields: [
       {
         name: "feedback",
@@ -83,6 +112,7 @@ const FORMS = {
     ],
   },
   "additional-info": {
+    attachments: { min: 0 },
     fields: [
       { name: "information", label: "Additional information", required: true, rows: 8 },
     ],

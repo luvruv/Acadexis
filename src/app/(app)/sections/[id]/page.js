@@ -7,10 +7,12 @@ import {
   SECTION_SOURCE_LABELS,
   SECTION_STATUS_LABELS,
 } from "@/lib/labels";
+import { EDITABLE_SECTION_STATUSES } from "@/lib/sections";
 import { getFormDefinition } from "@/section-forms/registry";
 import StatusBadge from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SectionForm from "./section-form";
+import AttachmentsPanel from "./attachments-panel";
 
 export const metadata = { title: "Section | Acadexis" };
 
@@ -43,6 +45,8 @@ export default async function SectionPage({ params }) {
   const isAssignee = section.assigneeId === user.id;
   const fileLocked =
     section.courseFile.status === "LOCKED" || section.courseFile.status === "EXPORTED";
+  const canEdit =
+    isAssignee && !fileLocked && EDITABLE_SECTION_STATUSES.includes(section.status);
 
   let readOnlyReason = null;
   if (!isAssignee) {
@@ -55,6 +59,26 @@ export default async function SectionPage({ params }) {
   } else if (section.status === "APPROVED") {
     readOnlyReason = "Approved. It can no longer be edited.";
   }
+
+  const attachments = definition?.attachments
+    ? (
+        await prisma.attachment.findMany({
+          where: { sectionId: section.id },
+          orderBy: { createdAt: "asc" },
+          include: { uploadedBy: { select: { name: true } } },
+        })
+      ).map((attachment) => ({
+        id: attachment.id,
+        name: attachment.originalName,
+        sizeBytes: attachment.sizeBytes,
+        uploadedBy: attachment.uploadedBy.name,
+        uploadedOn: attachment.createdAt.toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+      }))
+    : [];
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -102,20 +126,31 @@ export default async function SectionPage({ params }) {
       </Card>
 
       {definition ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Section content</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <SectionForm
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Section content</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SectionForm
+                sectionId={section.id}
+                version={section.version}
+                definition={definition}
+                content={content}
+                readOnlyReason={readOnlyReason}
+              />
+            </CardContent>
+          </Card>
+
+          {definition.attachments && (
+            <AttachmentsPanel
               sectionId={section.id}
-              version={section.version}
-              definition={definition}
-              content={content}
-              readOnlyReason={readOnlyReason}
+              attachments={attachments}
+              editable={canEdit}
+              min={definition.attachments.min}
             />
-          </CardContent>
-        </Card>
+          )}
+        </>
       ) : (
         <p className="rounded-md border bg-muted p-3 text-sm">
           The form for this section type is added in a later step.

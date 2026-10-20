@@ -46,6 +46,18 @@ export async function saveSectionAction(previousState, formData) {
       return { ok: false, message: parsed.error.issues[0].message };
     }
 
+        if (submitting && definition.attachments?.min > 0) {
+      const attachmentCount = await prisma.attachment.count({
+        where: { sectionId: section.id },
+      });
+      if (attachmentCount < definition.attachments.min) {
+        return {
+          ok: false,
+          message: `Upload at least ${definition.attachments.min} file(s) before submitting.`,
+        };
+      }
+    }
+
     // Optimistic lock plus a re-check of assignee, status and lock state,
     // all in one atomic update.
     const result = await prisma.courseFileSection.updateMany({
