@@ -90,6 +90,38 @@ const FORMS = {
       },
     ],
   },
+    "course-syllabus": {
+    attachments: { min: 0 },
+    fields: [
+      {
+        name: "topics",
+        label: "Topics of the course",
+        type: "table",
+        minRows: 1,
+        maxRows: 40,
+        totalColumn: "sessions",
+        columns: [
+          { key: "topic", label: "Topics / module content", type: "textarea", required: true },
+          { key: "sessions", label: "Sessions (hours)", type: "number", min: 0, max: 200, required: true },
+          { key: "cos", label: "COs mapped", type: "text", required: true },
+          { key: "readings", label: "Readings", type: "text", required: false },
+          { key: "activities", label: "Activities", type: "text", required: false },
+          { key: "strategy", label: "Teaching strategy", type: "text", required: false },
+        ],
+      },
+      { name: "textbooks", label: "Textbook(s)", required: true, rows: 4 },
+      { name: "references", label: "Reference books (optional)", required: false, rows: 4 },
+      { name: "otherResources", label: "Other learning resources (optional)", required: false, rows: 4 },
+    ],
+  },
+  attendance: {
+    attachments: { min: 1 },
+    fields: [{ name: "notes", label: "Summary or notes (optional)", required: false, rows: 4 }],
+  },
+  "final-results": {
+    attachments: { min: 1 },
+    fields: [{ name: "notes", label: "Summary or notes (optional)", required: false, rows: 4 }],
+  },
   "midsem-papers": {
     attachments: { min: 1 },
     fields: [{ name: "notes", label: "Notes (optional)", required: false, rows: 4 }],

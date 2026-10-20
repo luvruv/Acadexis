@@ -75,7 +75,9 @@ export async function createCourseFileAction(previousState, formData) {
         // sections are filled by the system, so they start as Approved.
         await tx.courseFileSection.createMany({
           data: template.sections.map((section) => {
-            const automatic = section.source === "PROGRAM_DATA";
+                        // Program sections and Course Details are complete from the start.
+            const automatic =
+              section.source === "PROGRAM_DATA" || section.formKey === "course-details";
             return {
               courseFileId: created.id,
               templateSectionId: section.id,
