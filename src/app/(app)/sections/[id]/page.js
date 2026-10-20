@@ -7,8 +7,10 @@ import {
   SECTION_SOURCE_LABELS,
   SECTION_STATUS_LABELS,
 } from "@/lib/labels";
+import { getFormDefinition } from "@/section-forms/registry";
 import StatusBadge from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import SectionForm from "./section-form";
 
 export const metadata = { title: "Section | Acadexis" };
 
@@ -35,9 +37,24 @@ export default async function SectionPage({ params }) {
   });
   if (!section) notFound();
 
+  const definition = getFormDefinition(section.formKey);
+  const content =
+    section.content && typeof section.content === "object" ? section.content : {};
   const isAssignee = section.assigneeId === user.id;
-  const locked =
+  const fileLocked =
     section.courseFile.status === "LOCKED" || section.courseFile.status === "EXPORTED";
+
+  let readOnlyReason = null;
+  if (!isAssignee) {
+    readOnlyReason =
+      "You are viewing this section as the coordinator. Only the assigned person can edit it.";
+  } else if (fileLocked) {
+    readOnlyReason = "The course file is locked, so this section is view only.";
+  } else if (section.status === "SUBMITTED") {
+    readOnlyReason = "Submitted. It is waiting for the coordinator's review.";
+  } else if (section.status === "APPROVED") {
+    readOnlyReason = "Approved. It can no longer be edited.";
+  }
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -81,20 +98,29 @@ export default async function SectionPage({ params }) {
             <span className="w-32 text-muted-foreground">Coordinator</span>
             {section.courseFile.coordinator.name}
           </div>
-          <div className="flex gap-2">
-            <span className="w-32 text-muted-foreground">Your access</span>
-            {isAssignee
-              ? locked
-                ? "Assigned to you (the course file is locked, so view only)"
-                : "Assigned to you"
-              : "Viewing as the coordinator"}
-          </div>
         </CardContent>
       </Card>
 
-      <p className="rounded-md border bg-muted p-3 text-sm">
-        The data entry form for this section is added in the next step.
-      </p>
+      {definition ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Section content</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SectionForm
+              sectionId={section.id}
+              version={section.version}
+              definition={definition}
+              content={content}
+              readOnlyReason={readOnlyReason}
+            />
+          </CardContent>
+        </Card>
+      ) : (
+        <p className="rounded-md border bg-muted p-3 text-sm">
+          The form for this section type is added in a later step.
+        </p>
+      )}
     </div>
   );
 }

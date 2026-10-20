@@ -17,3 +17,6 @@ export const SECTION_PAGE_SEGMENTS = {
   "course-outcomes": "outcomes",
   "student-list": "students",
 };
+
+// Statuses in which the assigned person may still edit a section.
+export const EDITABLE_SECTION_STATUSES = ["PENDING", "CHANGES_REQUESTED"];

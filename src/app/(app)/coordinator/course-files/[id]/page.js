@@ -49,7 +49,11 @@ export default async function CourseFileDetailPage({ params }) {
       assigneeId: section.assigneeId,
       assignable: isAssignable(section),
       fixedLabel: section.source === "COURSE_SETUP" ? "Coordinator" : "System",
-      openHref: segment ? `/coordinator/course-files/${id}/${segment}` : null,
+            openHref: segment
+        ? `/coordinator/course-files/${id}/${segment}`
+        : isAssignable(section)
+          ? `/sections/${section.id}`
+          : null,
     };
   });
 
