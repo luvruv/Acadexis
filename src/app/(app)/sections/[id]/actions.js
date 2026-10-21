@@ -6,6 +6,7 @@ import { ROLES } from "@/lib/permissions";
 import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { EDITABLE_SECTION_STATUSES } from "@/lib/sections";
+import { refreshCourseFileStatus } from "@/lib/course-file-status";
 import {
   buildContentSchema,
   extractRawContent,
@@ -93,6 +94,7 @@ export async function saveSectionAction(previousState, formData) {
       details: { courseFileId: section.courseFile.id, sectionNumber: section.number },
     });
 
+        if (submitting) await refreshCourseFileStatus(section.courseFile.id);
     revalidatePath(`/sections/${section.id}`);
     revalidatePath("/teacher");
     revalidatePath("/coordinator");

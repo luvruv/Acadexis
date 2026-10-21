@@ -208,7 +208,7 @@ export default async function CoordinatorHomePage() {
                   <tr key={section.id} className="border-t">
                     <td className="p-3">
                       <Link
-                        href={`/coordinator/course-files/${section.fileId}`}
+                                          href={`/sections/${section.id}`}
                         className="underline"
                       >
                         {section.courseCode}

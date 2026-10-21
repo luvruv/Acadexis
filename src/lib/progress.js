@@ -1,8 +1,8 @@
-import { isAssignable } from "@/lib/sections";
+import { countsTowardCompletion, isAssignable } from "@/lib/sections";
 
 // Each section needs: status, isRequired, assigneeId, source, formKey.
 export function summarizeSections(sections) {
-  const required = sections.filter((section) => section.isRequired);
+    const required = sections.filter(countsTowardCompletion);
   const approvedRequired = required.filter(
     (section) => section.status === "APPROVED"
   ).length;

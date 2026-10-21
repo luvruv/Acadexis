@@ -6,6 +6,7 @@ import { ROLES } from "@/lib/permissions";
 import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { isAssignable } from "@/lib/sections";
+import { refreshCourseFileStatus } from "@/lib/course-file-status";
 
 export async function assignSectionsAction(previousState, formData) {
   return runAction([ROLES.COORDINATOR], async (user) => {
@@ -116,6 +117,7 @@ export async function assignSectionsAction(previousState, formData) {
 
     revalidatePath(`/coordinator/course-files/${courseFileId}`);
     revalidatePath("/coordinator");
+        await refreshCourseFileStatus(courseFileId);
     return { ok: true, message: `Saved ${changes.length} change(s).` };
   });
 }

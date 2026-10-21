@@ -7,14 +7,29 @@ import {
   SECTION_SOURCE_LABELS,
   SECTION_STATUS_LABELS,
 } from "@/lib/labels";
-import { EDITABLE_SECTION_STATUSES } from "@/lib/sections";
+import {
+  EDITABLE_SECTION_STATUSES,
+  isReviewable,
+  SECTION_PAGE_SEGMENTS,
+} from "@/lib/sections";
 import { getFormDefinition } from "@/section-forms/registry";
 import StatusBadge from "@/components/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SectionForm from "./section-form";
 import AttachmentsPanel from "./attachments-panel";
+import ReviewPanel from "./review-panel";
 
 export const metadata = { title: "Section | Acadexis" };
+
+function formatDateTime(date) {
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default async function SectionPage({ params }) {
   const user = await requireUser();
@@ -43,10 +58,17 @@ export default async function SectionPage({ params }) {
   const content =
     section.content && typeof section.content === "object" ? section.content : {};
   const isAssignee = section.assigneeId === user.id;
+  const isCoordinator = section.courseFile.coordinatorId === user.id;
   const fileLocked =
     section.courseFile.status === "LOCKED" || section.courseFile.status === "EXPORTED";
   const canEdit =
     isAssignee && !fileLocked && EDITABLE_SECTION_STATUSES.includes(section.status);
+  const canReview =
+    isCoordinator &&
+    !fileLocked &&
+    isReviewable(section) &&
+    ["SUBMITTED", "APPROVED"].includes(section.status);
+  const ownPageSegment = SECTION_PAGE_SEGMENTS[section.formKey];
 
   let readOnlyReason = null;
   if (!isAssignee) {
@@ -59,6 +81,12 @@ export default async function SectionPage({ params }) {
   } else if (section.status === "APPROVED") {
     readOnlyReason = "Approved. It can no longer be edited.";
   }
+
+  const comments = await prisma.reviewComment.findMany({
+    where: { sectionId: section.id },
+    orderBy: { createdAt: "desc" },
+    include: { author: { select: { name: true } } },
+  });
 
   const attachments = definition?.attachments
     ? (
@@ -125,6 +153,38 @@ export default async function SectionPage({ params }) {
         </CardContent>
       </Card>
 
+      {comments.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Review comments</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {comments.map((comment) => (
+              <div key={comment.id} className="rounded-md border p-3 text-sm">
+                <div className="mb-1 flex flex-wrap items-center gap-2 text-muted-foreground">
+                  <span className="font-medium text-foreground">{comment.author.name}</span>
+                  <span>{formatDateTime(comment.createdAt)}</span>
+                  {comment.requestsChanges && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                      Changes requested
+                    </span>
+                  )}
+                </div>
+                <p className="whitespace-pre-wrap">{comment.body}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {canReview && (
+        <ReviewPanel
+          sectionId={section.id}
+          version={section.version}
+          status={section.status}
+        />
+      )}
+
       {definition ? (
         <>
           <Card>
@@ -151,6 +211,17 @@ export default async function SectionPage({ params }) {
             />
           )}
         </>
+      ) : ownPageSegment && isCoordinator ? (
+        <p className="rounded-md border bg-muted p-3 text-sm">
+          The coordinator edits this section on its own page.{" "}
+          <Link
+            href={`/coordinator/course-files/${section.courseFile.id}/${ownPageSegment}`}
+            className="underline"
+          >
+            Open it
+          </Link>{" "}
+          to check the content, then approve here.
+        </p>
       ) : (
         <p className="rounded-md border bg-muted p-3 text-sm">
           The form for this section type is added in a later step.

@@ -44,6 +44,16 @@ export default function AssignmentsTable({
                   {!section.isRequired && (
                     <span className="ml-2 text-xs text-muted-foreground">(optional)</span>
                   )}
+                                    {section.status === "SUBMITTED" && (
+                    <div>
+                      <Link
+                        href={`/sections/${section.id}`}
+                        className="text-xs font-medium underline"
+                      >
+                        Review
+                      </Link>
+                    </div>
+                  )}
                   {section.openHref && (
                     <div>
                       <Link href={section.openHref} className="text-xs underline">

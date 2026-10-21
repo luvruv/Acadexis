@@ -6,6 +6,7 @@ import { ROLES } from "@/lib/permissions";
 import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { saveCourseOutcomesSchema } from "@/lib/validation/course-outcomes";
+import { refreshCourseFileStatus } from "@/lib/course-file-status";
 
 class ConflictError extends Error {}
 
@@ -138,6 +139,7 @@ export async function saveCourseOutcomesAction(previousState, formData) {
       details: { outcomeCount: outcomes.length },
     });
 
+        await refreshCourseFileStatus(courseFileId);
     revalidatePath(`/coordinator/course-files/${courseFileId}/outcomes`);
     revalidatePath(`/coordinator/course-files/${courseFileId}`);
     return { ok: true, message: "Saved." };
