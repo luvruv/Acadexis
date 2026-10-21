@@ -6,6 +6,8 @@ import { COURSE_FILE_STATUS_LABELS } from "@/lib/labels";
 import { isAssignable, SECTION_PAGE_SEGMENTS } from "@/lib/sections";
 import StatusBadge from "@/components/status-badge";
 import AssignmentsTable from "./assignments-table";
+import LockPanel from "./lock-panel";
+import { getLockBlockers } from "@/lib/lock";
 
 export const metadata = { title: "Course file | Acadexis" };
 
@@ -18,7 +20,8 @@ export default async function CourseFileDetailPage({ params }) {
     where: { id, coordinatorId: user.id },
     include: {
       course: { include: { program: { select: { name: true } } } },
-      templateVersion: { select: { name: true } },
+            templateVersion: { select: { name: true } },
+      lockedBy: { select: { name: true } },
       sections: {
         orderBy: { number: "asc" },
         include: { assignee: { select: { name: true } } },
@@ -61,7 +64,17 @@ export default async function CourseFileDetailPage({ params }) {
   const assignedCount = sections.filter(
     (section) => section.assignable && section.assigneeId
   ).length;
-  const readOnly = courseFile.status === "LOCKED" || courseFile.status === "EXPORTED";
+    const readOnly = courseFile.status === "LOCKED" || courseFile.status === "EXPORTED";
+  const blockers = getLockBlockers(courseFile.sections);
+  const lockedOn = courseFile.lockedAt
+    ? courseFile.lockedAt.toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : null;
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -103,6 +116,14 @@ export default async function CourseFileDetailPage({ params }) {
           Student list
         </Link>
       </div>
+
+      <LockPanel
+        courseFileId={courseFile.id}
+        status={courseFile.status}
+        lockedOn={lockedOn}
+        lockedBy={courseFile.lockedBy?.name ?? null}
+        blockers={blockers}
+      />
 
       <AssignmentsTable
         courseFileId={courseFile.id}
