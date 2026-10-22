@@ -6,11 +6,19 @@ import { ROLES } from "@/lib/permissions";
 import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { getLockBlockers } from "@/lib/lock";
+import { computeAttainment } from "@/lib/attainment";
+import { loadAttainmentInputs } from "@/lib/attainment-data";
 
 class BlockedError extends Error {
   constructor(count) {
     super("blocked");
     this.count = count;
+  }
+}
+class AttainmentError extends Error {
+  constructor(problems) {
+    super("attainment");
+    this.problems = problems;
   }
 }
 class ConflictError extends Error {}
@@ -94,6 +102,10 @@ export async function lockCourseFileAction(previousState, formData) {
           const blockers = getLockBlockers(sections);
           if (blockers.length > 0) throw new BlockedError(blockers.length);
 
+          // CO attainment must be calculable from the final marks.
+          const attainment = computeAttainment(await loadAttainmentInputs(tx, courseFileId));
+          if (!attainment.ready) throw new AttainmentError(attainment.problems);
+
           const locked = await tx.courseFile.updateMany({
             where: {
               id: courseFileId,
@@ -105,6 +117,24 @@ export async function lockCourseFileAction(previousState, formData) {
           if (locked.count === 0) throw new ConflictError();
 
           for (const section of sections) {
+            // The calculated section stores the frozen result and the settings used.
+            if (section.formKey === "co-attainment") {
+              await tx.courseFileSection.update({
+                where: { id: section.id },
+                data: {
+                  content: {
+                    calculatedAt: new Date().toISOString(),
+                    settings: attainment.settings,
+                    rows: attainment.rows,
+                  },
+                  status: "APPROVED",
+                  approvedAt: new Date(),
+                  version: { increment: 1 },
+                },
+              });
+              continue;
+            }
+
             const snapshot = snapshots[section.formKey];
             if (section.source !== "PROGRAM_DATA" || !snapshot) continue;
             await tx.courseFileSection.update({
@@ -113,13 +143,21 @@ export async function lockCourseFileAction(previousState, formData) {
             });
           }
         },
-        { isolationLevel: "Serializable", timeout: 20000 }
+        { isolationLevel: "Serializable", timeout: 30000 }
       );
     } catch (error) {
       if (error instanceof BlockedError) {
         return {
           ok: false,
           message: `${error.count} section(s) are not ready. Refresh the page to see them.`,
+        };
+      }
+      if (error instanceof AttainmentError) {
+        return {
+          ok: false,
+          message: `CO attainment cannot be calculated yet. ${error.problems
+            .slice(0, 3)
+            .join(" ")}`,
         };
       }
       if (error instanceof ConflictError || error?.code === "P2034") {

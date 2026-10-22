@@ -23,6 +23,7 @@ export const AUDIT_ACTIONS = {
   COURSE_FILE_LOCKED: "COURSE_FILE_LOCKED",
   ASSESSMENTS_SAVED: "ASSESSMENTS_SAVED",
   MARKS_SAVED: "MARKS_SAVED",
+  ATTAINMENT_SETTINGS_SAVED: "ATTAINMENT_SETTINGS_SAVED",
 };
 
 // Never throws: a failed audit write must not break the user's request.

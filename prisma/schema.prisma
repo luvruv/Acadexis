@@ -213,6 +213,7 @@ model CourseFile {
   students             Student[]
   sections             CourseFileSection[]
   assessmentComponents AssessmentComponent[]
+  attainmentSetting    AttainmentSetting?
 
   @@unique([courseId, academicYear, semester, revision])
   @@index([coordinatorId])
@@ -380,4 +381,18 @@ model Mark {
 
   @@unique([componentId, studentId])
   @@index([studentId])
+}
+
+// ---------- CO attainment settings (per course file) ----------
+
+model AttainmentSetting {
+  courseFileId     String     @id
+  courseFile       CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  thresholdPercent Decimal    @db.Decimal(5, 2)
+  level1MinPercent Decimal    @db.Decimal(5, 2)
+  level2MinPercent Decimal    @db.Decimal(5, 2)
+  level3MinPercent Decimal    @db.Decimal(5, 2)
+  absentAsZero     Boolean
+  confirmed        Boolean    @default(false)
+  updatedAt        DateTime   @updatedAt
 }

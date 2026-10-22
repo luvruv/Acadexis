@@ -211,6 +211,18 @@ export default async function SectionPage({ params }) {
             />
           )}
         </>
+      ) : section.formKey === "co-attainment" ? (
+        <p className="rounded-md border bg-muted p-3 text-sm">
+          This section is calculated by the system from the marks.{" "}
+          {isCoordinator && (
+            <Link
+              href={`/coordinator/course-files/${section.courseFile.id}/attainment`}
+              className="underline"
+            >
+              Open CO attainment
+            </Link>
+          )}
+        </p>
       ) : section.formKey === "marks-all-components" ? (
         <p className="rounded-md border bg-muted p-3 text-sm">
           Marks are entered on their own page.{" "}
