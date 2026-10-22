@@ -7,7 +7,7 @@ import { runAction } from "@/lib/server-actions";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { saveStudentsSchema } from "@/lib/validation/students";
 import { refreshCourseFileStatus } from "@/lib/course-file-status";
-
+import { syncMarksSection } from "@/lib/marks";
 class ConflictError extends Error {}
 
 export async function saveStudentsAction(previousState, formData) {
@@ -133,8 +133,9 @@ export async function saveStudentsAction(previousState, formData) {
       },
     });
 
-        await refreshCourseFileStatus(courseFileId);
-    revalidatePath(`/coordinator/course-files/${courseFileId}/students`);
+    
+     await syncMarksSection(prisma, courseFileId);
+    await refreshCourseFileStatus(courseFileId);idatePath(`/coordinator/course-files/${courseFileId}/students`);
     revalidatePath(`/coordinator/course-files/${courseFileId}`);
     return { ok: true, message: `Saved ${students.length} students.` };
   });

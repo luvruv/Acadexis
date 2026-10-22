@@ -115,6 +115,18 @@ export default async function CourseFileDetailPage({ params }) {
         >
           Student list
         </Link>
+        <Link
+          href={`/coordinator/course-files/${courseFile.id}/assessments`}
+          className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Assessment components
+        </Link>
+        <Link
+          href={`/marks/${courseFile.id}`}
+          className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Marks
+        </Link>
       </div>
 
       <LockPanel

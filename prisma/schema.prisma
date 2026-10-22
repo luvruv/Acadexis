@@ -209,9 +209,10 @@ model CourseFile {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  outcomes CourseOutcome[]
-  students Student[]
-  sections CourseFileSection[]
+  outcomes             CourseOutcome[]
+  students             Student[]
+  sections             CourseFileSection[]
+  assessmentComponents AssessmentComponent[]
 
   @@unique([courseId, academicYear, semester, revision])
   @@index([coordinatorId])
@@ -219,13 +220,14 @@ model CourseFile {
 }
 
 model CourseOutcome {
-  id           String        @id @default(cuid())
-  courseFileId String
-  courseFile   CourseFile    @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
-  code         String
-  description  String
-  position     Int
-  poMappings   CoPoMapping[]
+  id             String                   @id @default(cuid())
+  courseFileId   String
+  courseFile     CourseFile               @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  code           String
+  description    String
+  position       Int
+  poMappings     CoPoMapping[]
+  componentLinks ComponentCourseOutcome[]
 
   @@unique([courseFileId, code])
 }
@@ -251,6 +253,7 @@ model Student {
   rollNo       String?
   name         String
   classGroup   String?
+  marks        Mark[]
 
   @@unique([courseFileId, enrollmentNo])
   @@index([courseFileId])
@@ -335,4 +338,46 @@ model Attachment {
   createdAt    DateTime          @default(now())
 
   @@index([sectionId])
+}
+
+// ---------- Assessments and marks ----------
+
+model AssessmentComponent {
+  id             String                   @id @default(cuid())
+  courseFileId   String
+  courseFile     CourseFile               @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  name           String
+  maxMarks       Decimal                  @db.Decimal(7, 2)
+  position       Int
+  courseOutcomes ComponentCourseOutcome[]
+  marks          Mark[]
+
+  @@unique([courseFileId, name])
+  @@index([courseFileId])
+}
+
+// Which Course Outcomes a component assesses
+model ComponentCourseOutcome {
+  componentId     String
+  component       AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  courseOutcomeId String
+  courseOutcome   CourseOutcome       @relation(fields: [courseOutcomeId], references: [id], onDelete: Cascade)
+
+  @@id([componentId, courseOutcomeId])
+  @@index([courseOutcomeId])
+}
+
+// One row per entered cell. marks = null with absent = true means absent.
+model Mark {
+  id          String              @id @default(cuid())
+  componentId String
+  component   AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  studentId   String
+  student     Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  marks       Decimal?            @db.Decimal(7, 2)
+  absent      Boolean             @default(false)
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([componentId, studentId])
+  @@index([studentId])
 }

@@ -211,6 +211,13 @@ export default async function SectionPage({ params }) {
             />
           )}
         </>
+      ) : section.formKey === "marks-all-components" ? (
+        <p className="rounded-md border bg-muted p-3 text-sm">
+          Marks are entered on their own page.{" "}
+          <Link href={`/marks/${section.courseFile.id}`} className="underline">
+            Open marks entry
+          </Link>
+        </p>
       ) : ownPageSegment && isCoordinator ? (
         <p className="rounded-md border bg-muted p-3 text-sm">
           The coordinator edits this section on its own page.{" "}
