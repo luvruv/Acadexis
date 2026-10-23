@@ -24,6 +24,7 @@ export const AUDIT_ACTIONS = {
   ASSESSMENTS_SAVED: "ASSESSMENTS_SAVED",
   MARKS_SAVED: "MARKS_SAVED",
   ATTAINMENT_SETTINGS_SAVED: "ATTAINMENT_SETTINGS_SAVED",
+  DRAFT_EXPORTED: "DRAFT_EXPORTED",
 };
 
 // Never throws: a failed audit write must not break the user's request.

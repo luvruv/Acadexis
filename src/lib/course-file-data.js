@@ -44,7 +44,15 @@ export async function loadCourseFileDocument(db, courseFileId) {
   const courseFile = await db.courseFile.findUnique({
     where: { id: courseFileId },
     include: {
-      course: { include: { program: { include: { school: { select: { name: true } } } } } },
+      course: {
+        include: {
+          program: {
+            include: {
+              school: { select: { name: true, university: { select: { name: true } } } },
+            },
+          },
+        },
+      },
       coordinator: { select: { name: true } },
       templateVersion: { select: { name: true } },
       lockedBy: { select: { name: true } },
@@ -89,6 +97,7 @@ export async function loadCourseFileDocument(db, courseFileId) {
     courseTitle: courseFile.course.title,
     programName: courseFile.course.program.name,
     schoolName: courseFile.course.program.school.name,
+    universityName: courseFile.course.program.school.university.name,
     semester: courseFile.semester,
     academicYear: courseFile.academicYear,
     batch: courseFile.batch,
