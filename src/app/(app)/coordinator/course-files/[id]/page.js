@@ -133,6 +133,12 @@ export default async function CourseFileDetailPage({ params }) {
         >
           CO attainment
         </Link>
+        <Link
+          href={`/coordinator/course-files/${courseFile.id}/preview`}
+          className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Preview
+        </Link>
       </div>
 
       <LockPanel
