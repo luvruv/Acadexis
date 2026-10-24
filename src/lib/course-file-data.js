@@ -23,7 +23,12 @@ function buildFormData(definition, content, attachments) {
         return {
           type: "table",
           label: field.label,
-          columns: field.columns.map(({ key, label }) => ({ key, label })),
+          columns: field.columns.map(({ key, label }) => ({ key, label })),          columns: field.columns.map(({ key, label, required }) => ({
+            key,
+            label,
+            required: Boolean(required),
+          })),
+          totalColumn: field.totalColumn ?? null,
           rows: Array.isArray(value) ? value : [],
         };
       }

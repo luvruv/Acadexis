@@ -2,6 +2,7 @@ import {
   emptyParagraph,
   heading,
   imageParagraph,
+  listItem,
   note,
   paragraph,
   run,
@@ -19,11 +20,19 @@ function notProvided() {
   return note("Not provided.");
 }
 
-function outcomeLines(items) {
+// "PEO1" -> "PEO 1", as written in the BMU course files.
+function spacedCode(code) {
+  return String(code).replace(/^([A-Za-z]+)(\d+)$/, "$1 $2");
+}
+
+function outcomeLines(items, { spaced = false } = {}) {
   if (items.length === 0) return note("None.");
   return items
     .map((item) =>
-      paragraph(run(`${item.code}: `, { bold: true }) + run(item.description), { after: 60 })
+      paragraph(
+        run(`${spaced ? spacedCode(item.code) : item.code}: `, { bold: true }) + run(item.description),
+        { after: 100, justify: true, line: 280 }
+      )
     )
     .join("");
 }
@@ -59,6 +68,45 @@ function attachmentXml(file, assets) {
   return line(label);
 }
 
+// The session plan is written as "Week 1-3: topics" lines, like the sample.
+function sessionPlanXml(field) {
+  if (field.rows.length === 0) return notProvided();
+  return field.rows
+    .map((row) => {
+      const cos = row.cos ? ` (${row.cos})` : "";
+      return paragraph(run(`${row.week}: `, { bold: true }) + run(`${row.topics}${cos}`), {
+        after: 120,
+        justify: true,
+        line: 280,
+      });
+    })
+    .join("");
+}
+
+// A table field. Optional columns nobody filled in are left out, and a total
+// line is added when the field defines one (for example total sessions).
+function tableFieldXml(field) {
+  if (field.rows.length === 0) return notProvided();
+
+  const columns = field.columns.filter(
+    (column) => column.required || field.rows.some((row) => String(row[column.key] ?? "").trim() !== "")
+  );
+
+  let xml = table({
+    columns: columns.map((column) => column.label),
+    rows: field.rows.map((row) => columns.map((column) => row[column.key] ?? "")),
+    size: columns.length > 5 ? 18 : 20,
+  });
+
+  if (field.totalColumn) {
+    const column = field.columns.find((item) => item.key === field.totalColumn);
+    const total =
+      Math.round(field.rows.reduce((sum, row) => sum + (Number(row[field.totalColumn]) || 0), 0) * 100) / 100;
+    xml += paragraph(run(`Total ${column?.label ?? ""}: ${total}`, { bold: true }), { after: 120 });
+  }
+  return xml;
+}
+
 // Builds the body of one section as WordprocessingML. The heading itself
 // ("7. Course Syllabus") comes from the Word template.
 // assets: the result of loadAttachmentAssets() (optional).
@@ -73,31 +121,30 @@ export function buildSectionBody(section, assets = null) {
         headerRow: false,
       });
 
-    case "vision-mission":
+    case "vision-mission": {
+      const scope = section.formKey.startsWith("school") ? "School" : "University";
       return (
-        (data.name ? paragraph(run(data.name, { bold: true })) : "") +
-        heading("Vision") +
+        heading(`Vision of the ${scope}:`, { center: true }) +
         textOrNote(data.vision) +
-        heading("Mission") +
+        heading(`Mission of the ${scope}:`, { center: true }) +
         textOrNote(data.mission)
       );
+    }
 
     case "list":
       return data.items.length === 0
         ? note("None.")
-        : data.items
-            .map((item, index) => paragraph(run(`${index + 1}. ${item}`), { after: 80, indent: 360 }))
-            .join("");
+        : data.items.map((item) => listItem("\u2022", run(item))).join("");
 
     case "program-outcomes":
       return (
         (data.programName ? paragraph(run(data.programName, { bold: true })) : "") +
         heading("Program Educational Objectives (PEOs)") +
-        outcomeLines(data.peos) +
+        outcomeLines(data.peos, { spaced: true }) +
         heading("Program Outcomes (POs)") +
-        outcomeLines(data.pos) +
+        outcomeLines(data.pos, { spaced: true }) +
         heading("Program Specific Outcomes (PSOs)") +
-        outcomeLines(data.psos)
+        outcomeLines(data.psos, { spaced: true })
       );
 
     case "co-po": {
@@ -108,9 +155,15 @@ export function buildSectionBody(section, assets = null) {
         ...data.columns.map((column) => data.matrix[outcome.code]?.[column] ?? "-"),
       ]);
       return (
+        paragraph(
+          run("Course Outcomes (CO): ", { bold: true }) +
+            run("At the end of the course the students should be able to do the following:"),
+          { after: 100, justify: true }
+        ) +
         outcomeLines(data.outcomes) +
-        paragraph("", { after: 60 }) +
-        table({ columns, rows, size: columns.length > 10 ? 16 : 20, centerFrom: 1 })
+        heading("CO-PO Mapping") +
+        table({ columns, rows, size: columns.length > 10 ? 16 : 20, centerFrom: 1 }) +
+        note("1 - Low correlation; 2 - Moderate correlation; 3 - Substantial correlation.")
       );
     }
 
@@ -178,16 +231,10 @@ export function buildSectionBody(section, assets = null) {
     case "form": {
       let xml = "";
       for (const field of data.fields) {
-        xml += heading(field.label);
+        // The session plan reads as paragraphs and needs no field heading.
+        if (section.formKey !== "session-plan") xml += heading(field.label);
         if (field.type === "table") {
-          xml +=
-            field.rows.length === 0
-              ? notProvided()
-              : table({
-                  columns: field.columns.map((column) => column.label),
-                  rows: field.rows.map((row) => field.columns.map((column) => row[column.key] ?? "")),
-                  size: field.columns.length > 5 ? 18 : 20,
-                });
+          xml += section.formKey === "session-plan" ? sessionPlanXml(field) : tableFieldXml(field);
         } else {
           xml += textOrNote(field.value);
         }

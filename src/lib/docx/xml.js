@@ -29,23 +29,50 @@ export function run(text, { bold, italic, color, size } = {}) {
   )}</w:t></w:r>`;
 }
 
-export function paragraph(runs, { before = 0, after = 100, keepNext = false, indent = 0 } = {}) {
+export function paragraph(
+  runs,
+  { before = 0, after = 100, keepNext = false, indent = 0, hanging = 0, justify = false, center = false, line = 0 } = {}
+) {
   const props = [
     keepNext ? "<w:keepNext/>" : "",
-    `<w:spacing w:before="${before}" w:after="${after}"/>`,
-    indent ? `<w:ind w:left="${indent}"/>` : "",
+    `<w:spacing w:before="${before}" w:after="${after}"${line ? ` w:line="${line}" w:lineRule="auto"` : ""}/>`,
+    indent || hanging
+      ? `<w:ind w:left="${indent}"${hanging ? ` w:hanging="${hanging}"` : ""}/>`
+      : "",
+    justify ? '<w:jc w:val="both"/>' : center ? '<w:jc w:val="center"/>' : "",
   ].join("");
   return `<w:p><w:pPr>${props}</w:pPr>${runs}</w:p>`;
 }
 
 // One paragraph per line of text, so line breaks typed in the forms are kept.
+// Body text is justified with a little extra line spacing, like the sample.
 export function textParagraphs(text, options = {}) {
   const lines = String(text ?? "").split(/\r?\n/);
-  return lines.map((line) => paragraph(run(line, options.run), options.paragraph)).join("");
+  return lines
+    .map((line) =>
+      paragraph(run(line, options.run), {
+        justify: true,
+        line: 300,
+        after: 120,
+        ...options.paragraph,
+      })
+    )
+    .join("");
 }
 
-export function heading(text) {
-  return paragraph(run(text, { bold: true }), { before: 160, after: 60, keepNext: true });
+export function heading(text, { center = false } = {}) {
+  return paragraph(run(text, { bold: true }), { before: 160, after: 80, keepNext: true, center });
+}
+
+// A bullet or numbered item with a hanging indent.
+export function listItem(label, runsAfterLabel) {
+  return paragraph(run(label) + "<w:r><w:tab/></w:r>" + runsAfterLabel, {
+    indent: 540,
+    hanging: 360,
+    after: 80,
+    justify: true,
+    line: 280,
+  });
 }
 
 export function note(text) {
@@ -102,7 +129,7 @@ export function table({ columns, rows, size = 20, centerFrom = null, headerRow =
             bold: true,
             fill: "E7E6E6",
             size,
-            center: centerFrom !== null && i >= centerFrom,
+            center: true,
           })
         )
         .join("")}</w:tr>`
@@ -125,7 +152,9 @@ export function table({ columns, rows, size = 20, centerFrom = null, headerRow =
   return (
     `<w:tbl><w:tblPr><w:tblW w:w="${TEXT_WIDTH}" w:type="dxa"/>` +
     `<w:tblBorders>${BORDER}</w:tblBorders><w:tblLayout w:type="fixed"/>` +
-    `<w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar>` +
+    `<w:tblCellMar><w:left w:w="${size <= 16 ? 40 : 80}" w:type="dxa"/><w:right w:w="${
+      size <= 16 ? 40 : 80
+    }" w:type="dxa"/></w:tblCellMar>` +
     `</w:tblPr><w:tblGrid>${grid}</w:tblGrid>${headerXml}${bodyXml}</w:tbl>` +
     emptyParagraph()
   );

@@ -4,8 +4,8 @@
 // header and footer. Keep the {tags}: they are replaced with real data.
 //
 //   {courseCode} {courseTitle} {universityName} {schoolName} {programName}
-//   {semester} {academicYear} {batch} {coordinatorName} {documentId}
-//   {generatedOn} {draftNotice}
+//   {programLine} {subjectLine} {semester} {academicYear} {batch}
+//   {coordinatorName} {documentId} {generatedOn} {draftNotice}
 //   {#sections} ... {number} {title} ... {@body} ... {/sections}
 //
 // {@body} is replaced with the content of each section.
@@ -34,59 +34,92 @@ const text = (value, options = {}) => new TextRun({ text: value, font: FONT, ...
 const line = (value, options = {}, paragraph = {}) =>
   new Paragraph({ children: [text(value, options)], ...paragraph });
 
-const cellBorder = { style: BorderStyle.SINGLE, size: 4, color: "808080" };
-const borders = { top: cellBorder, bottom: cellBorder, left: cellBorder, right: cellBorder };
+const THIN = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+const thinBorders = { top: THIN, bottom: THIN, left: THIN, right: THIN };
+const DOUBLE = { style: BorderStyle.DOUBLE, size: 6, color: "000000" };
+const boxBorders = { top: DOUBLE, bottom: DOUBLE, left: DOUBLE, right: DOUBLE };
 
-function factRow(label, tag) {
-  return new TableRow({
-    children: [
-      new TableCell({
-        width: { size: 3000, type: WidthType.DXA },
-        borders,
-        margins: { top: 60, bottom: 60, left: 100, right: 100 },
-        children: [line(label, { bold: true })],
+// A centered bold line in the cover box: a fixed label followed by a tag.
+function boxLine(label, tag) {
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 120, after: 120 },
+    children: [text(label, { bold: true }), text(tag, { bold: true })],
+  });
+}
+
+// Cover page, laid out like the HCI sample course file. To add the BMU logo,
+// open the template in Word and insert it above the university name.
+const cover = [
+  line("{universityName}", { bold: true, size: 40 }, { alignment: AlignmentType.CENTER, spacing: { before: 1200, after: 120 } }),
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: 360 },
+    children: [text("{schoolName}", { bold: true, size: 28, allCaps: true })],
+  }),
+  line("COURSE FILE", { bold: true, size: 36 }, { alignment: AlignmentType.CENTER, spacing: { after: 720 } }),
+  new Table({
+    width: { size: 9026, type: WidthType.DXA },
+    columnWidths: [9026],
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 9026, type: WidthType.DXA },
+            borders: boxBorders,
+            margins: { top: 200, bottom: 200, left: 200, right: 200 },
+            children: [
+              boxLine("Program: ", "{programLine}"),
+              boxLine("Subject Code & Name: ", "{subjectLine}"),
+              boxLine("Faculty: ", "{coordinatorName}"),
+              boxLine("Module/Semester: ", "{semester}"),
+              boxLine("Session: ", "{academicYear}"),
+            ],
+          }),
+        ],
       }),
-      new TableCell({
-        width: { size: 6026, type: WidthType.DXA },
-        borders,
-        margins: { top: 60, bottom: 60, left: 100, right: 100 },
-        children: [line(tag)],
+    ],
+  }),
+  line("Document ID: {documentId}", { bold: true }, { alignment: AlignmentType.CENTER, spacing: { before: 480, after: 60 } }),
+  line("Generated on: {generatedOn}", {}, { alignment: AlignmentType.CENTER }),
+  line("{draftNotice}", { bold: true, color: "C00000", size: 24 }, { alignment: AlignmentType.CENTER, spacing: { before: 300 } }),
+];
+
+function indexCell(value, width, { center = false } = {}) {
+  return new TableCell({
+    width: { size: width, type: WidthType.DXA },
+    borders: thinBorders,
+    margins: { top: 60, bottom: 60, left: 100, right: 100 },
+    children: [
+      new Paragraph({
+        alignment: center ? AlignmentType.CENTER : AlignmentType.LEFT,
+        children: [text(value, { bold: true })],
       }),
     ],
   });
 }
 
-const cover = [
-  line("{universityName}", { bold: true, size: 40 }, { alignment: AlignmentType.CENTER, spacing: { before: 1200, after: 120 } }),
-  line("{schoolName}", { size: 28 }, { alignment: AlignmentType.CENTER, spacing: { after: 600 } }),
-  line("COURSE FILE", { bold: true, size: 48 }, { alignment: AlignmentType.CENTER, spacing: { after: 600 } }),
-  new Table({
-    width: { size: 9026, type: WidthType.DXA },
-    columnWidths: [3000, 6026],
-    rows: [
-      factRow("Program", "{programName}"),
-      factRow("Course code", "{courseCode}"),
-      factRow("Course title", "{courseTitle}"),
-      factRow("Semester / term", "{semester}"),
-      factRow("Academic year", "{academicYear}"),
-      factRow("Batch", "{batch}"),
-      factRow("Course coordinator", "{coordinatorName}"),
-      factRow("Document ID", "{documentId}"),
-      factRow("Generated on", "{generatedOn}"),
-    ],
-  }),
-  line("{draftNotice}", { bold: true, color: "C00000", size: 24 }, { alignment: AlignmentType.CENTER, spacing: { before: 400 } }),
-];
-
+// The index is one table row that repeats for every section: the loop starts
+// in the first cell and ends in the last cell.
 const index = [
   new Paragraph({
     pageBreakBefore: true,
+    alignment: AlignmentType.CENTER,
     spacing: { after: 240 },
-    children: [text("Index", { bold: true, size: 32 })],
+    children: [text("Index", { bold: true, size: 28, underline: {} })],
   }),
-  line("{#sections}"),
-  line("{number}. {title}", {}, { spacing: { after: 80 } }),
-  line("{/sections}"),
+  new Table({
+    width: { size: 9026, type: WidthType.DXA },
+    columnWidths: [900, 8126],
+    rows: [
+      new TableRow({
+        children: [
+          indexCell("{#sections}{number}.", 900, { center: true }),
+          indexCell("{title}{/sections}", 8126),
+        ],
+      }),
+    ],
+  }),
 ];
 
 const sections = [
@@ -123,12 +156,14 @@ const document = new Document({
   sections: [
     {
       properties: {
+        titlePage: true, // the cover page has no header or footer, as in the sample
         page: {
           size: { width: 11906, height: 16838 },
           margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
         },
       },
       headers: {
+        first: new Header({ children: [new Paragraph({})] }),
         default: new Header({
           children: [
             line("{courseCode}: {courseTitle}", { size: 18, color: "595959" }, { alignment: AlignmentType.RIGHT }),
@@ -136,6 +171,7 @@ const document = new Document({
         }),
       },
       footers: {
+        first: new Footer({ children: [new Paragraph({})] }),
         default: new Footer({
           children: [
             new Paragraph({

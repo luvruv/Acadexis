@@ -59,6 +59,8 @@ export function renderCourseFileDocx(
     universityName: header.universityName ?? "",
     schoolName: header.schoolName,
     programName: header.programName,
+    programLine: header.batch ? `${header.programName} ${header.batch}` : header.programName,
+    subjectLine: `${header.courseTitle} (${header.courseCode})`,
     courseCode: header.courseCode,
     courseTitle: header.courseTitle,
     semester: header.semester,
