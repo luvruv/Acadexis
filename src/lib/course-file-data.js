@@ -34,6 +34,8 @@ function buildFormData(definition, content, attachments) {
       id: attachment.id,
       name: attachment.originalName,
       sizeBytes: attachment.sizeBytes,
+      mimeType: attachment.mimeType,
+      storagePath: attachment.storagePath,
     })),
   };
 }
@@ -66,7 +68,13 @@ export async function loadCourseFileDocument(db, courseFileId) {
         include: {
           attachments: {
             orderBy: { createdAt: "asc" },
-            select: { id: true, originalName: true, sizeBytes: true },
+            select: {
+              id: true,
+              originalName: true,
+              sizeBytes: true,
+              mimeType: true,
+              storagePath: true,
+            },
           },
         },
       },

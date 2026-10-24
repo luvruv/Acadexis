@@ -4,6 +4,8 @@ import { HttpError, handleApiError } from "@/lib/http";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { loadCourseFileDocument } from "@/lib/course-file-data";
 import { renderCourseFileDocx } from "@/lib/docx/render";
+import { loadAttachmentAssets } from "@/lib/docx/attachments";
+import { appendAnnexures } from "@/lib/docx/annexures";
 import { convertDocxToPdf, PdfUnavailableError } from "@/lib/docx/pdf";
 
 function safeName(text) {
@@ -26,7 +28,8 @@ export async function GET(_request, { params }) {
     const doc = await loadCourseFileDocument(prisma, id);
     if (!doc) throw new HttpError(404, "Course file not found.");
 
-    const docxBuffer = renderCourseFileDocx(doc, { documentId: null });
+    const assets = await loadAttachmentAssets(doc);
+    const docxBuffer = renderCourseFileDocx(doc, { documentId: null, assets });
 
     let pdf;
     try {
@@ -35,13 +38,14 @@ export async function GET(_request, { params }) {
       if (error instanceof PdfUnavailableError) throw new HttpError(503, error.message);
       throw error;
     }
+    pdf = await appendAnnexures(pdf, assets.annexures);
 
     await logAudit({
       userId: user.id,
       action: AUDIT_ACTIONS.DRAFT_EXPORTED,
       entityType: "CourseFile",
       entityId: id,
-      details: { format: "pdf" },
+      details: { format: "pdf", annexures: assets.annexures.length },
     });
 
     const { courseCode, academicYear, semester } = doc.header;

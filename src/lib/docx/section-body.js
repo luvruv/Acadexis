@@ -1,6 +1,7 @@
 import {
   emptyParagraph,
   heading,
+  imageParagraph,
   note,
   paragraph,
   run,
@@ -31,9 +32,37 @@ function textOrNote(value) {
   return value ? textParagraphs(value) : notProvided();
 }
 
+// One uploaded file: images are embedded, PDFs point to their annexure,
+// everything else is listed by name.
+function attachmentXml(file, assets) {
+  const asset = assets?.byId.get(file.id);
+  const label = `${file.name} (${formatSize(file.sizeBytes)})`;
+  const line = (text, extra = {}) => paragraph(run(text), { after: 60, indent: 360, ...extra });
+
+  if (asset?.kind === "image") {
+    return (
+      line(label, { keepNext: true }) +
+      imageParagraph({
+        relId: asset.relId,
+        cx: asset.cx,
+        cy: asset.cy,
+        id: asset.drawingId,
+        name: file.name,
+      })
+    );
+  }
+  if (asset?.kind === "pdf") {
+    return line(`${label}: Annexure ${asset.annexureNumber} (appended in the PDF copy)`);
+  }
+  if (asset?.kind === "missing") return line(`${label}: the stored file could not be found`);
+  if (asset?.kind === "too-large") return line(`${label}: not embedded (size limit reached)`);
+  return line(label);
+}
+
 // Builds the body of one section as WordprocessingML. The heading itself
 // ("7. Course Syllabus") comes from the Word template.
-export function buildSectionBody(section) {
+// assets: the result of loadAttachmentAssets() (optional).
+export function buildSectionBody(section, assets = null) {
   const { kind, data } = section;
 
   switch (kind) {
@@ -168,11 +197,7 @@ export function buildSectionBody(section) {
         xml +=
           data.attachments.length === 0
             ? note("No files uploaded.")
-            : data.attachments
-                .map((file) =>
-                  paragraph(run(`${file.name} (${formatSize(file.sizeBytes)})`), { after: 60, indent: 360 })
-                )
-                .join("");
+            : data.attachments.map((file) => attachmentXml(file, assets)).join("");
       }
       return xml;
     }

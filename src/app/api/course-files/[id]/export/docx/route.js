@@ -4,6 +4,7 @@ import { HttpError, handleApiError } from "@/lib/http";
 import { AUDIT_ACTIONS, logAudit } from "@/lib/audit";
 import { loadCourseFileDocument } from "@/lib/course-file-data";
 import { renderCourseFileDocx } from "@/lib/docx/render";
+import { loadAttachmentAssets } from "@/lib/docx/attachments";
 
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -28,7 +29,8 @@ export async function GET(_request, { params }) {
     const doc = await loadCourseFileDocument(prisma, id);
     if (!doc) throw new HttpError(404, "Course file not found.");
 
-    const buffer = renderCourseFileDocx(doc, { documentId: null });
+    const assets = await loadAttachmentAssets(doc);
+    const buffer = renderCourseFileDocx(doc, { documentId: null, assets });
 
     await logAudit({
       userId: user.id,
