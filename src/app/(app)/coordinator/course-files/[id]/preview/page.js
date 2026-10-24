@@ -53,6 +53,12 @@ export default async function PreviewPage({ params }) {
         >
           Download draft (DOCX)
         </a>
+        <a
+          href={`/api/course-files/${id}/export/pdf`}
+          className="ml-2 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+        >
+          Download draft (PDF)
+        </a>
       </div>
 
       <CourseFileView doc={doc} />
