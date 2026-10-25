@@ -28,6 +28,13 @@ export async function GET(_request, { params }) {
     const doc = await loadCourseFileDocument(prisma, id);
     if (!doc) throw new HttpError(404, "Course file not found.");
 
+    if (doc.header.status === "LOCKED" || doc.header.status === "EXPORTED") {
+      throw new HttpError(
+        409,
+        "This course file is locked. Use the official export on the course file page."
+      );
+    }
+
     const assets = await loadAttachmentAssets(doc);
     const docxBuffer = renderCourseFileDocx(doc, { documentId: null, assets });
 

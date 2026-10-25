@@ -228,6 +228,7 @@ export async function loadCourseFileDocument(db, courseFileId) {
       formKey: section.formKey,
       status: section.status,
       isRequired: section.isRequired,
+      source: section.source,
       kind,
       data,
     };

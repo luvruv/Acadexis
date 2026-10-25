@@ -1,35 +1,46 @@
 import path from "node:path";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 
-// Private storage folder. It is never served directly; every download goes
-// through a permission check. Override with UPLOAD_DIR in .env if needed.
-const BASE_DIR = path.resolve(
+// Two private folders, neither served directly. Every download goes through a
+// permission check. Override with UPLOAD_DIR and GENERATED_DIR in .env.
+const UPLOADS_DIR = path.resolve(
   process.env.UPLOAD_DIR ?? path.join(process.cwd(), "storage", "uploads")
+);
+const GENERATED_DIR = path.resolve(
+  process.env.GENERATED_DIR ?? path.join(process.cwd(), "storage", "generated")
 );
 
 // Refuses any path that would leave the storage folder.
-function resolveSafe(relativePath) {
-  const full = path.resolve(BASE_DIR, relativePath);
-  if (!full.startsWith(BASE_DIR + path.sep)) {
+function resolveSafe(baseDir, relativePath) {
+  const full = path.resolve(baseDir, relativePath);
+  if (!full.startsWith(baseDir + path.sep)) {
     throw new Error("Invalid storage path.");
   }
   return full;
 }
 
-export async function saveFile(relativePath, buffer) {
-  const full = resolveSafe(relativePath);
+async function save(baseDir, relativePath, buffer) {
+  const full = resolveSafe(baseDir, relativePath);
   await mkdir(path.dirname(full), { recursive: true });
   await writeFile(full, buffer, { flag: "wx" }); // never overwrite
 }
 
-export function readStoredFile(relativePath) {
-  return readFile(resolveSafe(relativePath));
-}
-
-export async function deleteStoredFile(relativePath) {
+async function remove(baseDir, relativePath) {
   try {
-    await unlink(resolveSafe(relativePath));
+    await unlink(resolveSafe(baseDir, relativePath));
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
 }
+
+// ----- Uploaded evidence files -----
+export const saveFile = (relativePath, buffer) => save(UPLOADS_DIR, relativePath, buffer);
+export const readStoredFile = (relativePath) => readFile(resolveSafe(UPLOADS_DIR, relativePath));
+export const deleteStoredFile = (relativePath) => remove(UPLOADS_DIR, relativePath);
+
+// ----- Official generated documents -----
+export const saveGeneratedFile = (relativePath, buffer) =>
+  save(GENERATED_DIR, relativePath, buffer);
+export const readGeneratedFile = (relativePath) =>
+  readFile(resolveSafe(GENERATED_DIR, relativePath));
+export const deleteGeneratedFile = (relativePath) => remove(GENERATED_DIR, relativePath);

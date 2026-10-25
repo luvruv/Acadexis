@@ -7,6 +7,7 @@ import { isAssignable, SECTION_PAGE_SEGMENTS } from "@/lib/sections";
 import StatusBadge from "@/components/status-badge";
 import AssignmentsTable from "./assignments-table";
 import LockPanel from "./lock-panel";
+import ExportPanel from "./export-panel";
 import { getLockBlockers } from "@/lib/lock";
 
 export const metadata = { title: "Course file | Acadexis" };
@@ -22,6 +23,10 @@ export default async function CourseFileDetailPage({ params }) {
       course: { include: { program: { select: { name: true } } } },
             templateVersion: { select: { name: true } },
       lockedBy: { select: { name: true } },
+      generatedDocuments: {
+        orderBy: { generatedAt: "desc" },
+        include: { generatedBy: { select: { name: true } } },
+      },
       sections: {
         orderBy: { number: "asc" },
         include: { assignee: { select: { name: true } } },
@@ -147,6 +152,25 @@ export default async function CourseFileDetailPage({ params }) {
         lockedOn={lockedOn}
         lockedBy={courseFile.lockedBy?.name ?? null}
         blockers={blockers}
+      />
+
+      <ExportPanel
+        courseFileId={courseFile.id}
+        status={courseFile.status}
+        documents={courseFile.generatedDocuments.map((document) => ({
+          documentId: document.documentId,
+          generatedOn: document.generatedAt.toLocaleString("en-IN", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          generatedBy: document.generatedBy.name,
+          docxBytes: document.docxBytes,
+          pdfBytes: document.pdfBytes,
+          annexureCount: document.annexureCount,
+        }))}
       />
 
       <AssignmentsTable

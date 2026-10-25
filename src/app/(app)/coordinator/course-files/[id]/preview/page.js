@@ -23,6 +23,7 @@ export default async function PreviewPage({ params }) {
   const doc = await loadCourseFileDocument(prisma, id);
   if (!doc) notFound();
   const { header } = doc;
+  const locked = header.status === "LOCKED" || header.status === "EXPORTED";
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -41,25 +42,34 @@ export default async function PreviewPage({ params }) {
           {header.batch ? ` · ${header.batch}` : ""} · {header.templateName}
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
-          This is a read-only preview of the course file content. The DOCX and PDF
-          export comes in a later step.
+          This is a read-only preview of the course file content.
         </p>
       </div>
 
-      <div>
-        <a
-          href={`/api/course-files/${id}/export/docx`}
-          className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
-        >
-          Download draft (DOCX)
-        </a>
-        <a
-          href={`/api/course-files/${id}/export/pdf`}
-          className="ml-2 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
-        >
-          Download draft (PDF)
-        </a>
-      </div>
+      {locked ? (
+        <p className="text-sm text-muted-foreground">
+          This course file is locked. Official copies are issued from the{" "}
+          <Link href={`/coordinator/course-files/${id}`} className="underline">
+            course file page
+          </Link>
+          .
+        </p>
+      ) : (
+        <div>
+          <a
+            href={`/api/course-files/${id}/export/docx`}
+            className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+          >
+            Download draft (DOCX)
+          </a>
+          <a
+            href={`/api/course-files/${id}/export/pdf`}
+            className="ml-2 inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium"
+          >
+            Download draft (PDF)
+          </a>
+        </div>
+      )}
 
       <CourseFileView doc={doc} />
     </div>

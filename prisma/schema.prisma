@@ -66,6 +66,7 @@ model User {
   assignmentsMade     SectionAssignment[] @relation("AssignmentAssigner")
   reviewComments      ReviewComment[]
   attachments         Attachment[]
+  generatedDocuments  GeneratedDocument[]
 }
 
 model AuditLog {
@@ -214,6 +215,7 @@ model CourseFile {
   sections             CourseFileSection[]
   assessmentComponents AssessmentComponent[]
   attainmentSetting    AttainmentSetting?
+  generatedDocuments   GeneratedDocument[]
 
   @@unique([courseId, academicYear, semester, revision])
   @@index([coordinatorId])
@@ -395,4 +397,29 @@ model AttainmentSetting {
   absentAsZero     Boolean
   confirmed        Boolean    @default(false)
   updatedAt        DateTime   @updatedAt
+}
+
+// ---------- Official documents ----------
+
+// One official export per course file revision. The files live in private
+// storage; only paths and checksums are kept here.
+model GeneratedDocument {
+  id            String     @id @default(cuid())
+  documentId    String     @unique
+  courseFileId  String
+  courseFile    CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Restrict)
+  revision      Int
+  generatedById String
+  generatedBy   User       @relation(fields: [generatedById], references: [id], onDelete: Restrict)
+  generatedAt   DateTime   @default(now())
+  docxPath      String
+  docxBytes     Int
+  docxSha256    String
+  pdfPath       String
+  pdfBytes      Int
+  pdfSha256     String
+  annexureCount Int        @default(0)
+
+  @@unique([courseFileId, revision])
+  @@index([courseFileId])
 }
