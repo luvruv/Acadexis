@@ -6,8 +6,13 @@ const NAV_BY_ROLE = {
     { href: "/admin/program", label: "Program setup" },
     { href: "/admin/outcomes", label: "PEOs / POs / PSOs" },
     { href: "/admin/users", label: "Users" },
+    { href: "/repository", label: "Repository" },
   ],
-  COORDINATOR: [DASHBOARD, { href: "/coordinator", label: "My course files" }],
+  COORDINATOR: [
+    DASHBOARD,
+    { href: "/coordinator", label: "My course files" },
+    { href: "/repository", label: "Repository" },
+  ],
   CO_TEACHER: [DASHBOARD, { href: "/teacher", label: "My assignments" }],
 };
 
