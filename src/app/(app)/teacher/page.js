@@ -3,6 +3,7 @@ import { requireRole, ROLES } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { COURSE_FILE_STATUS_LABELS, SECTION_STATUS_LABELS } from "@/lib/labels";
 import StatusBadge from "@/components/status-badge";
+import { dueState, formatDueDate } from "@/lib/dates";
 
 export const metadata = { title: "My assignments | Acadexis" };
 
@@ -61,6 +62,7 @@ export default async function TeacherHomePage() {
                 <th className="p-3">Course</th>
                 <th className="p-3">Section</th>
                 <th className="p-3">Status</th>
+                <th className="p-3">Due</th>
                 <th className="p-3">Coordinator</th>
                 <th className="p-3"></th>
               </tr>
@@ -88,6 +90,23 @@ export default async function TeacherHomePage() {
                   </td>
                   <td className="p-3">
                     <StatusBadge status={section.status} labels={SECTION_STATUS_LABELS} />
+                  </td>
+                  <td className="whitespace-nowrap p-3">
+                    {section.dueDate ? formatDueDate(section.dueDate) : "-"}
+                    {section.dueDate &&
+                      ["PENDING", "CHANGES_REQUESTED"].includes(section.status) &&
+                      dueState(section.dueDate) === "overdue" && (
+                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-800">
+                          Overdue
+                        </span>
+                      )}
+                    {section.dueDate &&
+                      ["PENDING", "CHANGES_REQUESTED"].includes(section.status) &&
+                      dueState(section.dueDate) === "soon" && (
+                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
+                          Due soon
+                        </span>
+                      )}
                   </td>
                   <td className="p-3">{section.courseFile.coordinator.name}</td>
                   <td className="p-3">

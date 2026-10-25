@@ -4,6 +4,7 @@ import { requireRole, ROLES } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import { COURSE_FILE_STATUS_LABELS } from "@/lib/labels";
 import { isAssignable, SECTION_PAGE_SEGMENTS } from "@/lib/sections";
+import { dueState, toDateString } from "@/lib/dates";
 import StatusBadge from "@/components/status-badge";
 import AssignmentsTable from "./assignments-table";
 import LockPanel from "./lock-panel";
@@ -55,6 +56,8 @@ export default async function CourseFileDetailPage({ params }) {
       source: section.source,
       status: section.status,
       assigneeId: section.assigneeId,
+      dueDate: section.dueDate ? toDateString(section.dueDate) : "",
+      dueState: dueState(section.dueDate),
       assignable: isAssignable(section),
       fixedLabel: section.source === "COURSE_SETUP" ? "Coordinator" : "System",
             openHref: segment

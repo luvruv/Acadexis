@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 import { requireUser, ROLE_LABELS } from "@/lib/permissions";
 import { getNavItems } from "@/lib/navigation";
 import SidebarNav from "@/components/sidebar-nav";
@@ -8,6 +10,9 @@ import { logoutAction } from "./actions";
 // still runs its own permission check.
 export default async function AppLayout({ children }) {
   const user = await requireUser();
+  const unread = await prisma.notification.count({
+    where: { userId: user.id, readAt: null },
+  });
 
   return (
     <div className="min-h-screen md:grid md:grid-cols-[15rem_1fr]">
@@ -23,11 +28,19 @@ export default async function AppLayout({ children }) {
               {ROLE_LABELS[user.role]}
             </span>
           </div>
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Sign out
-            </Button>
-          </form>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/notifications"
+              className={`text-sm underline ${unread > 0 ? "font-semibold" : ""}`}
+            >
+              Reminders{unread > 0 ? ` (${unread})` : ""}
+            </Link>
+            <form action={logoutAction}>
+              <Button type="submit" variant="outline" size="sm">
+                Sign out
+              </Button>
+            </form>
+          </div>
         </header>
         <main className="flex-1 p-6">{children}</main>
       </div>

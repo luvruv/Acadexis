@@ -67,6 +67,7 @@ model User {
   reviewComments      ReviewComment[]
   attachments         Attachment[]
   generatedDocuments  GeneratedDocument[]
+  notifications       Notification[]
 }
 
 model AuditLog {
@@ -289,9 +290,11 @@ model CourseFileSection {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  assignments SectionAssignment[]
-  comments    ReviewComment[]
-  attachments Attachment[]
+  assignments    SectionAssignment[]
+  comments       ReviewComment[]
+  attachments    Attachment[]
+  dueDate        DateTime?           @db.Date
+  lastReminderAt DateTime?
 
   @@unique([courseFileId, number])
   @@index([assigneeId])
@@ -422,4 +425,18 @@ model GeneratedDocument {
 
   @@unique([courseFileId, revision])
   @@index([courseFileId])
+}
+
+// ---------- In-app notifications ----------
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sectionId String?
+  message   String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  @@index([userId, readAt])
 }

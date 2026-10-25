@@ -20,6 +20,7 @@ export const config = {
     "/teacher/:path*",
     "/sections/:path*",
     "/marks/:path*",
+    "/notifications/:path*",
     "/repository/:path*",
   ],
 };
