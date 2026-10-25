@@ -6,6 +6,7 @@ const NAV_BY_ROLE = {
     { href: "/admin/program", label: "Program setup" },
     { href: "/admin/outcomes", label: "PEOs / POs / PSOs" },
     { href: "/admin/users", label: "Users" },
+    { href: "/admin/audit", label: "Audit log" },
     { href: "/repository", label: "Repository" },
   ],
   COORDINATOR: [
