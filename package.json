@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "db:seed": "node prisma/seed.mjs",
-    "db:seed-users": "node prisma/seed-users.mjs"
+    "db:seed-users": "node prisma/seed-users.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
@@ -35,10 +37,12 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@xmldom/xmldom": "^0.9.12",
     "docx": "^9.13.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "prisma": "^7.10.1",
-    "tailwindcss": "^4"
+    "tailwindcss": "^4",
+    "vitest": "^5.0.5"
   }
 }

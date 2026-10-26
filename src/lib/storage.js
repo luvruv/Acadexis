@@ -35,12 +35,13 @@ async function remove(baseDir, relativePath) {
 
 // ----- Uploaded evidence files -----
 export const saveFile = (relativePath, buffer) => save(UPLOADS_DIR, relativePath, buffer);
-export const readStoredFile = (relativePath) => readFile(resolveSafe(UPLOADS_DIR, relativePath));
+export const readStoredFile = async (relativePath) =>
+  readFile(resolveSafe(UPLOADS_DIR, relativePath));
 export const deleteStoredFile = (relativePath) => remove(UPLOADS_DIR, relativePath);
 
 // ----- Official generated documents -----
 export const saveGeneratedFile = (relativePath, buffer) =>
   save(GENERATED_DIR, relativePath, buffer);
-export const readGeneratedFile = (relativePath) =>
+export const readGeneratedFile = async (relativePath) =>
   readFile(resolveSafe(GENERATED_DIR, relativePath));
 export const deleteGeneratedFile = (relativePath) => remove(GENERATED_DIR, relativePath);
