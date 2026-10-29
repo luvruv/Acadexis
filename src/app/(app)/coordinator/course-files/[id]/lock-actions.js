@@ -136,6 +136,19 @@ export async function lockCourseFileAction(previousState, formData) {
               continue;
             }
 
+            if (section.formKey === "po-attainment") {
+              await tx.courseFileSection.update({
+                where: { id: section.id },
+                data: {
+                  content: { calculatedAt: new Date().toISOString(), po: attainment.po },
+                  status: "APPROVED",
+                  approvedAt: new Date(),
+                  version: { increment: 1 },
+                },
+              });
+              continue;
+            }
+
             const snapshot = snapshots[section.formKey];
             if (section.source !== "PROGRAM_DATA" || !snapshot) continue;
             await tx.courseFileSection.update({

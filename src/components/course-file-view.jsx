@@ -339,6 +339,43 @@ function SectionBody({ section }) {
         </div>
       );
 
+    case "po-attainment":
+      return (
+        <div className="space-y-3">
+          {data.live && <Muted>Live calculation. It is frozen when the course file is locked.</Muted>}
+          {data.rows.length === 0 ? (
+            <Muted>{data.message}</Muted>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="p-2">Programme outcome</th>
+                      <th className="p-2 text-center">Attainment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.rows.map((item) => (
+                      <tr key={item.code} className="border-t">
+                        <td className="p-2">{item.code}</td>
+                        <td className="p-2 text-center">
+                          {item.value === null ? "-" : item.value.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Muted>
+                PO attainment is the sum of (CO attainment x CO-PO level) divided by the sum of the
+                CO-PO levels. A dash means no Course Outcome is mapped to that outcome.
+              </Muted>
+            </>
+          )}
+        </div>
+      );
+
     default:
       return <Muted>{data.message ?? "Nothing has been entered for this section."}</Muted>;
   }

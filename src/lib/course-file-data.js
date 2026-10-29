@@ -214,7 +214,15 @@ export async function loadCourseFileDocument(db, courseFileId) {
             problems: attainment.problems,
           };
     } else if (section.formKey === "po-attainment") {
-      data = { message: "PO attainment is not calculated yet. The formula is not confirmed." };
+      kind = "po-attainment";
+      const frozen = isFilled(section.content) && Array.isArray(section.content.po);
+      const poRows = frozen ? section.content.po : attainment.po;
+      data = {
+        live: !frozen,
+        rows: poRows.some((item) => item.value !== null) ? poRows : [],
+        calculatedAt: frozen ? section.content.calculatedAt ?? null : null,
+        message: "PO attainment is shown once the CO attainment can be calculated.",
+      };
     } else {
       const definition = getFormDefinition(section.formKey);
       if (definition) {

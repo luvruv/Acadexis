@@ -289,6 +289,20 @@ export function buildSectionBody(section, assets = null) {
       return xml;
     }
 
+    case "po-attainment": {
+      if (data.rows.length === 0) return note(data.message) + emptyParagraph();
+      return (
+        table({
+          columns: ["Programme outcome", "Attainment"],
+          rows: data.rows.map((item) => [item.code, item.value === null ? "-" : item.value.toFixed(2)]),
+          centerFrom: 1,
+        }) +
+        note(
+          "PO attainment is the sum of (CO attainment x CO-PO level) divided by the sum of the CO-PO levels. A dash means no Course Outcome is mapped to that outcome."
+        )
+      );
+    }
+
     default:
       return note(data.message ?? "Nothing has been entered for this section.") + emptyParagraph();
   }

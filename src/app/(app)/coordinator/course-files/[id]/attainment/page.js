@@ -234,6 +234,46 @@ export default async function AttainmentPage({ params }) {
           )}
         </CardContent>
       </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>PO and PSO attainment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {result.po.length === 0 ? (
+            <p className="text-muted-foreground">
+              Shown once the CO attainment above is complete (no items under &quot;Not ready&quot;).
+            </p>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="p-2">Programme outcome</th>
+                      <th className="p-2 text-center">Attainment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.po.map((item) => (
+                      <tr key={item.code} className="border-t">
+                        <td className="p-2">{item.code}</td>
+                        <td className="p-2 text-center">
+                          {item.value === null ? "-" : item.value.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-muted-foreground">
+                Each value is the sum of (CO attainment x CO-PO level) divided by the sum of the
+                CO-PO levels. A dash means no Course Outcome is mapped to that outcome. The CO-PO
+                levels come from the course outcomes page.
+              </p>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import {
   checkWeights,
   computeCoAttainment,
   computeOverall,
+  computePoAttainment,
   round2,
 } from "@/lib/attainment-method";
 
@@ -26,13 +27,14 @@ export function suggestedCoWeightPercents(count) {
 // students:   [{ id, enrollmentNo, name }]
 // marks:      Map of "studentId:componentId" -> { value: number | null, absent: boolean }
 // settings:   see DEFAULT_ATTAINMENT_SETTINGS
-export function computeAttainment({ outcomes, components, students, marks, settings }) {
+// poMatrix:   optional, [{ code, levels: { [outcomeId]: 0..3 } }] (CO-PO correlation levels)
+export function computeAttainment({ outcomes, components, students, marks, settings, poMatrix }) {
   const problems = [];
   if (outcomes.length === 0) problems.push("Define the course outcomes first.");
   if (components.length === 0) problems.push("Define the assessment components first.");
   if (students.length === 0) problems.push("The student list is empty.");
   if (problems.length > 0) {
-    return { ready: false, problems, rows: [], students: [], settings, overall: null };
+    return { ready: false, problems, rows: [], students: [], settings, overall: null, po: [] };
   }
 
   // Only components mapped to at least one CO take part.
@@ -54,6 +56,7 @@ export function computeAttainment({ outcomes, components, students, marks, setti
   const studentIndex = new Map(students.map((student, index) => [student.id, index]));
 
   const rows = [];
+  const coAverages = {};
   for (const outcome of outcomes) {
     const mapped = [];
     for (const component of components) {
@@ -125,6 +128,7 @@ export function computeAttainment({ outcomes, components, students, marks, setti
       continue;
     }
 
+    coAverages[outcome.id] = result.averageLevel;
     rows.push({
       ...base,
       assessed: result.assessed,
@@ -147,5 +151,15 @@ export function computeAttainment({ outcomes, components, students, marks, setti
     overall = total.value === null ? null : round2(total.value);
   }
 
-  return { ready: problems.length === 0, problems, rows, students: perStudent, settings, overall };
+  // PO and PSO attainment is only given when the CO attainment is complete.
+  const ready = problems.length === 0;
+  const po =
+    ready && poMatrix
+      ? computePoAttainment(coAverages, poMatrix).map((item) => ({
+          code: item.code,
+          value: item.value === null ? null : round2(item.value),
+        }))
+      : [];
+
+  return { ready, problems, rows, students: perStudent, settings, overall, po };
 }

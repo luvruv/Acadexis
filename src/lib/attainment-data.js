@@ -26,6 +26,31 @@ export async function loadAttainmentInputs(db, courseFileId) {
   });
   const saved = await db.attainmentSetting.findUnique({ where: { courseFileId } });
 
+  // CO-PO correlation levels, one entry per PO / PSO of the program.
+  const courseFile = await db.courseFile.findUnique({
+    where: { id: courseFileId },
+    select: { course: { select: { programId: true } } },
+  });
+  const programColumns = courseFile
+    ? await db.programOutcome.findMany({
+        where: { programId: courseFile.course.programId, type: { in: ["PO", "PSO"] } },
+        orderBy: [{ type: "asc" }, { position: "asc" }],
+        select: { id: true, code: true },
+      })
+    : [];
+  const mappingRows = await db.coPoMapping.findMany({
+    where: { courseOutcome: { courseFileId } },
+    select: { courseOutcomeId: true, programOutcomeId: true, level: true },
+  });
+  const poMatrix = programColumns.map((column) => ({
+    code: column.code,
+    levels: Object.fromEntries(
+      mappingRows
+        .filter((mapping) => mapping.programOutcomeId === column.id)
+        .map((mapping) => [mapping.courseOutcomeId, mapping.level])
+    ),
+  }));
+
   const marks = new Map();
   for (const mark of markRows) {
     marks.set(`${mark.studentId}:${mark.componentId}`, {
@@ -51,6 +76,7 @@ export async function loadAttainmentInputs(db, courseFileId) {
     })),
     students,
     marks,
+    poMatrix,
     settings: saved
       ? {
           studentLevel3Min: Number(saved.studentLevel3Min),
