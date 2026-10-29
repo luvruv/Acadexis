@@ -224,14 +224,15 @@ model CourseFile {
 }
 
 model CourseOutcome {
-  id             String                   @id @default(cuid())
-  courseFileId   String
-  courseFile     CourseFile               @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
-  code           String
-  description    String
-  position       Int
-  poMappings     CoPoMapping[]
-  componentLinks ComponentCourseOutcome[]
+  id               String                   @id @default(cuid())
+  courseFileId     String
+  courseFile       CourseFile               @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  code             String
+  description      String
+  position         Int
+  attainmentWeight Decimal?                 @db.Decimal(6, 4)
+  poMappings       CoPoMapping[]
+  componentLinks   ComponentCourseOutcome[]
 
   @@unique([courseFileId, code])
 }
@@ -368,6 +369,7 @@ model ComponentCourseOutcome {
   component       AssessmentComponent @relation(fields: [componentId], references: [id], onDelete: Cascade)
   courseOutcomeId String
   courseOutcome   CourseOutcome       @relation(fields: [courseOutcomeId], references: [id], onDelete: Cascade)
+  weight          Decimal?            @db.Decimal(6, 4)
 
   @@id([componentId, courseOutcomeId])
   @@index([courseOutcomeId])
@@ -391,15 +393,19 @@ model Mark {
 // ---------- CO attainment settings (per course file) ----------
 
 model AttainmentSetting {
-  courseFileId     String     @id
-  courseFile       CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
-  thresholdPercent Decimal    @db.Decimal(5, 2)
-  level1MinPercent Decimal    @db.Decimal(5, 2)
-  level2MinPercent Decimal    @db.Decimal(5, 2)
-  level3MinPercent Decimal    @db.Decimal(5, 2)
-  absentAsZero     Boolean
-  confirmed        Boolean    @default(false)
-  updatedAt        DateTime   @updatedAt
+  courseFileId           String     @id
+  courseFile             CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
+  thresholdPercent       Decimal    @db.Decimal(5, 2)
+  level1MinPercent       Decimal    @db.Decimal(5, 2)
+  level2MinPercent       Decimal    @db.Decimal(5, 2)
+  level3MinPercent       Decimal    @db.Decimal(5, 2)
+  absentAsZero           Boolean
+  studentLevel3Min       Decimal    @default(0.5000) @db.Decimal(5, 4)
+  studentLevel2Min       Decimal    @default(0.4500) @db.Decimal(5, 4)
+  courseLevel3MinPercent Decimal    @default(70) @db.Decimal(5, 2)
+  courseLevel2MinPercent Decimal    @default(65) @db.Decimal(5, 2)
+  confirmed              Boolean    @default(false)
+  updatedAt              DateTime   @updatedAt
 }
 
 // ---------- Official documents ----------
