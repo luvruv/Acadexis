@@ -76,3 +76,42 @@ export async function makeCourseFile(coordinator, { status = "CREATED" } = {}) {
 export async function reload(model, id) {
   return prisma[model].findUnique({ where: { id } });
 }
+
+// One CO, one quiz component mapped to it, and two students.
+// Step 41 will change how attainment is calculated; if the inputs it needs
+// change, only this helper has to be updated.
+export async function addAttainmentData(courseFile, { complete = true } = {}) {
+  const outcome = await prisma.courseOutcome.create({
+    data: { courseFileId: courseFile.id, code: "CO1", description: "Outcome 1", position: 1 },
+  });
+  const component = await prisma.assessmentComponent.create({
+    data: { courseFileId: courseFile.id, name: "Quiz", maxMarks: 10, position: 1 },
+  });
+  await prisma.componentCourseOutcome.create({
+    data: { componentId: component.id, courseOutcomeId: outcome.id },
+  });
+  for (const n of [1, 2]) {
+    const student = await prisma.student.create({
+      data: { courseFileId: courseFile.id, enrollmentNo: `E${n}`, name: `Student ${n}` },
+    });
+    if (complete) {
+      await prisma.mark.create({
+        data: { componentId: component.id, studentId: student.id, marks: 7 },
+      });
+    }
+  }
+}
+
+// A course file that is ready to lock: every section that counts is Approved
+// and the attainment data is complete.
+export async function makeLockableFile(coordinator) {
+  const made = await makeCourseFile(coordinator, { status: "IN_PROGRESS" });
+  await prisma.courseFileSection.updateMany({
+    where: { courseFileId: made.courseFile.id, source: { not: "COMPUTED" } },
+    data: { status: "APPROVED" },
+  });
+  await addAttainmentData(made.courseFile);
+  return made;
+}
+
+export const params = (value) => ({ params: Promise.resolve(value) });
