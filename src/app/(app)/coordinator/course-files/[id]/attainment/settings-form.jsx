@@ -10,13 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const NUMBER_FIELDS = [
-  ["thresholdPercent", "Attainment threshold (% of marks a student needs)"],
-  ["level1MinPercent", "Level 1: at least this % of students attain"],
-  ["level2MinPercent", "Level 2: at least this % of students attain"],
-  ["level3MinPercent", "Level 3: at least this % of students attain"],
+  ["studentLevel3MinPercent", "Student Level 3: score at least this % of the weighted maximum"],
+  ["studentLevel2MinPercent", "Student Level 2: score at least this % (below it is Level 1)"],
+  ["courseLevel3MinPercent", "Course Level 3: at least this % of students are at Level 3"],
+  ["courseLevel2MinPercent", "Course Level 2: at least this % of students are at Level 3"],
 ];
 
-export default function SettingsForm({ courseFileId, settings, readOnly }) {
+// settings: percent values for the form. outcomes: [{ id, code, weightPercent }]
+export default function SettingsForm({ courseFileId, settings, outcomes, readOnly }) {
   const [state, formAction, isPending] = useActionState(saveAttainmentSettingsAction, {
     ok: null,
     message: "",
@@ -70,6 +71,33 @@ export default function SettingsForm({ courseFileId, settings, readOnly }) {
             />
             Confirmed by the department
           </label>
+
+          {outcomes.length > 0 && (
+            <div className="space-y-2 sm:col-span-2">
+              <p className="text-sm font-medium">
+                Overall weight of each Course Outcome (must add up to 100%)
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {outcomes.map((outcome) => (
+                  <div key={outcome.id} className="space-y-1">
+                    <Label htmlFor={`coWeight-${outcome.id}`}>{outcome.code} (%)</Label>
+                    <Input
+                      id={`coWeight-${outcome.id}`}
+                      name={`coWeight:${outcome.id}`}
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="any"
+                      defaultValue={outcome.weightPercent}
+                      disabled={readOnly}
+                      required
+                      className="w-28"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2 sm:col-span-2">
             <FormStatus state={state} />

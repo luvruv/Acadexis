@@ -1,17 +1,19 @@
 import { DEFAULT_ATTAINMENT_SETTINGS } from "@/lib/attainment";
 
+const toNumber = (value) => (value === null || value === undefined ? null : Number(value));
+
 // Loads everything computeAttainment needs. "db" is the prisma client or a
 // transaction client. Queries run one after another so it is safe in both.
 export async function loadAttainmentInputs(db, courseFileId) {
   const outcomes = await db.courseOutcome.findMany({
     where: { courseFileId },
     orderBy: { position: "asc" },
-    select: { id: true, code: true },
+    select: { id: true, code: true, attainmentWeight: true },
   });
   const components = await db.assessmentComponent.findMany({
     where: { courseFileId },
     orderBy: { position: "asc" },
-    include: { courseOutcomes: { select: { courseOutcomeId: true } } },
+    include: { courseOutcomes: { select: { courseOutcomeId: true, weight: true } } },
   });
   const students = await db.student.findMany({
     where: { courseFileId },
@@ -33,21 +35,28 @@ export async function loadAttainmentInputs(db, courseFileId) {
   }
 
   return {
-    outcomes,
+    outcomes: outcomes.map((outcome) => ({
+      id: outcome.id,
+      code: outcome.code,
+      weight: toNumber(outcome.attainmentWeight),
+    })),
     components: components.map((component) => ({
       id: component.id,
       name: component.name,
       maxMarks: Number(component.maxMarks),
-      outcomeIds: component.courseOutcomes.map((link) => link.courseOutcomeId),
+      links: component.courseOutcomes.map((link) => ({
+        outcomeId: link.courseOutcomeId,
+        weight: toNumber(link.weight),
+      })),
     })),
     students,
     marks,
     settings: saved
       ? {
-          thresholdPercent: Number(saved.thresholdPercent),
-          level1MinPercent: Number(saved.level1MinPercent),
-          level2MinPercent: Number(saved.level2MinPercent),
-          level3MinPercent: Number(saved.level3MinPercent),
+          studentLevel3Min: Number(saved.studentLevel3Min),
+          studentLevel2Min: Number(saved.studentLevel2Min),
+          courseLevel3MinPercent: Number(saved.courseLevel3MinPercent),
+          courseLevel2MinPercent: Number(saved.courseLevel2MinPercent),
           absentAsZero: saved.absentAsZero,
           confirmed: saved.confirmed,
         }

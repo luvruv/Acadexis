@@ -211,7 +211,9 @@ function SectionBody({ section }) {
         </div>
       );
 
-    case "co-attainment":
+    case "co-attainment": {
+      const isNew = data.rows.length > 0 && data.rows[0].average !== undefined;
+      const percentOf = (fraction) => Math.round(fraction * 10000) / 100;
       return (
         <div className="space-y-3">
           {data.live && (
@@ -220,11 +222,19 @@ function SectionBody({ section }) {
               {data.problems.length > 0 ? ` Not complete: ${data.problems.join(" ")}` : ""}
             </Muted>
           )}
+          {data.settings && isNew && (
+            <p className="text-sm text-muted-foreground">
+              Student Level 3 at {percentOf(data.settings.studentLevel3Min)}% or more, Level 2 at{" "}
+              {percentOf(data.settings.studentLevel2Min)}% or more. Target level 3 needs{" "}
+              {data.settings.courseLevel3MinPercent}% of students at Level 3, level 2 needs{" "}
+              {data.settings.courseLevel2MinPercent}%.
+            </p>
+          )}
           {data.settings && !data.settings.confirmed && (
             <p className="rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
-              Provisional settings: threshold {data.settings.thresholdPercent}%, level minimums{" "}
-              {data.settings.level1MinPercent}/{data.settings.level2MinPercent}/
-              {data.settings.level3MinPercent}%. Not yet confirmed by the department.
+              {isNew
+                ? "These settings are not yet confirmed by the department."
+                : `Provisional settings: threshold ${data.settings.thresholdPercent}%, level minimums ${data.settings.level1MinPercent}/${data.settings.level2MinPercent}/${data.settings.level3MinPercent}%. Not yet confirmed by the department.`}
             </p>
           )}
           {data.rows.length === 0 ? (
@@ -244,15 +254,19 @@ function SectionBody({ section }) {
                 </thead>
                 <tbody>
                   <tr className="border-t">
-                    <td className="p-2">No. of students who attained</td>
+                    <td className="p-2">{isNew ? "Students at Level 3" : "No. of students who attained"}</td>
                     {data.rows.map((row) => (
                       <td key={row.code} className="p-2 text-center">
-                        {row.percentage === null ? "-" : row.attained}
+                        {row.percentage === null
+                          ? "-"
+                          : isNew
+                            ? `${row.attained} of ${row.assessed}`
+                            : row.attained}
                       </td>
                     ))}
                   </tr>
                   <tr className="border-t">
-                    <td className="p-2">% of students who attained</td>
+                    <td className="p-2">{isNew ? "% of students at Level 3" : "% of students who attained"}</td>
                     {data.rows.map((row) => (
                       <td key={row.code} className="p-2 text-center">
                         {row.percentage === null ? "-" : row.percentage.toFixed(2)}
@@ -260,19 +274,35 @@ function SectionBody({ section }) {
                     ))}
                   </tr>
                   <tr className="border-t font-medium">
-                    <td className="p-2">Attainment level</td>
+                    <td className="p-2">{isNew ? "Target attainment level" : "Attainment level"}</td>
                     {data.rows.map((row) => (
                       <td key={row.code} className="p-2 text-center">
                         {row.level === null ? "-" : row.level}
                       </td>
                     ))}
                   </tr>
+                  {isNew && (
+                    <tr className="border-t font-medium">
+                      <td className="p-2">CO attainment (average of student levels)</td>
+                      {data.rows.map((row) => (
+                        <td key={row.code} className="p-2 text-center">
+                          {row.average === null ? "-" : row.average.toFixed(2)}
+                        </td>
+                      ))}
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           )}
+          {isNew && data.overall !== null && data.overall !== undefined && (
+            <p className="text-sm">
+              <strong>Overall course attainment:</strong> {data.overall.toFixed(2)}
+            </p>
+          )}
         </div>
       );
+    }
 
     case "form":
       return (

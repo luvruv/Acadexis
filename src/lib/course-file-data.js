@@ -201,6 +201,7 @@ export async function loadCourseFileDocument(db, courseFileId) {
             live: false,
             rows: section.content.rows,
             settings: section.content.settings,
+            overall: section.content.overall ?? null,
             calculatedAt: section.content.calculatedAt ?? null,
             problems: [],
           }
@@ -208,6 +209,7 @@ export async function loadCourseFileDocument(db, courseFileId) {
             live: true,
             rows: attainment.rows,
             settings: attainment.settings,
+            overall: attainment.overall,
             calculatedAt: null,
             problems: attainment.problems,
           };

@@ -92,10 +92,15 @@ export async function saveAssessmentsAction(previousState, formData) {
           where: { componentId: { in: savedIds } },
         });
         const links = components.flatMap((component, index) =>
-          [...new Set(component.courseOutcomeIds)].map((courseOutcomeId) => ({
-            componentId: savedIds[index],
-            courseOutcomeId,
-          }))
+          [...new Set(component.courseOutcomeIds)].map((courseOutcomeId) => {
+            const percent = component.outcomeWeights?.[courseOutcomeId];
+            return {
+              componentId: savedIds[index],
+              courseOutcomeId,
+              weight:
+                percent === null || percent === undefined ? null : Number((percent / 100).toFixed(4)),
+            };
+          })
         );
         if (links.length > 0) {
           await tx.componentCourseOutcome.createMany({ data: links });

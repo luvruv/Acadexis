@@ -82,13 +82,16 @@ export async function reload(model, id) {
 // change, only this helper has to be updated.
 export async function addAttainmentData(courseFile, { complete = true } = {}) {
   const outcome = await prisma.courseOutcome.create({
-    data: { courseFileId: courseFile.id, code: "CO1", description: "Outcome 1", position: 1 },
+    data: {
+      courseFileId: courseFile.id, code: "CO1", description: "Outcome 1", position: 1,
+      attainmentWeight: 1,
+    },
   });
   const component = await prisma.assessmentComponent.create({
     data: { courseFileId: courseFile.id, name: "Quiz", maxMarks: 10, position: 1 },
   });
   await prisma.componentCourseOutcome.create({
-    data: { componentId: component.id, courseOutcomeId: outcome.id },
+    data: { componentId: component.id, courseOutcomeId: outcome.id, weight: 1 },
   });
   for (const n of [1, 2]) {
     const student = await prisma.student.create({

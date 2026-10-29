@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole, ROLES } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
-import { computeAttainment } from "@/lib/attainment";
+import { computeAttainment, suggestedCoWeightPercents } from "@/lib/attainment";
 import { loadAttainmentInputs } from "@/lib/attainment-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SettingsForm from "./settings-form";
 
 export const metadata = { title: "CO attainment | Acadexis" };
+
+const percentOf = (fraction) => Math.round(fraction * 10000) / 100;
 
 export default async function AttainmentPage({ params }) {
   const user = await requireRole(ROLES.COORDINATOR);
@@ -27,6 +29,21 @@ export default async function AttainmentPage({ params }) {
   const { settings } = inputs;
   const readOnly = courseFile.status === "LOCKED" || courseFile.status === "EXPORTED";
 
+  const suggested = suggestedCoWeightPercents(inputs.outcomes.length);
+  const formOutcomes = inputs.outcomes.map((outcome, index) => ({
+    id: outcome.id,
+    code: outcome.code,
+    weightPercent: outcome.weight === null ? suggested[index] : percentOf(outcome.weight),
+  }));
+  const formSettings = {
+    studentLevel3MinPercent: percentOf(settings.studentLevel3Min),
+    studentLevel2MinPercent: percentOf(settings.studentLevel2Min),
+    courseLevel3MinPercent: settings.courseLevel3MinPercent,
+    courseLevel2MinPercent: settings.courseLevel2MinPercent,
+    absentAsZero: settings.absentAsZero,
+    confirmed: settings.confirmed,
+  };
+
   return (
     <div className="max-w-6xl space-y-4">
       <div>
@@ -41,9 +58,9 @@ export default async function AttainmentPage({ params }) {
 
       {!settings.confirmed && (
         <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <strong>Provisional settings.</strong> These values are a working assumption, not
-          a confirmed department rule. Update them when the official rule arrives, then tick
-          "Confirmed by the department".
+          <strong>Not yet confirmed.</strong> The starting values come from the department&apos;s
+          HCI (CSE2724) attainment workbook. Check them for this course, then tick &quot;Confirmed
+          by the department&quot;.
         </p>
       )}
 
@@ -53,23 +70,30 @@ export default async function AttainmentPage({ params }) {
         </CardHeader>
         <CardContent className="space-y-1 text-sm">
           <p>
-            A student attains a CO when their marks in the components mapped to that CO,
-            divided by the maximum marks of those components, are at least{" "}
-            <strong>{settings.thresholdPercent}%</strong>.
+            For each Course Outcome (CO), every student gets a score: the sum of (component weight
+            x marks) divided by the sum of (component weight x maximum marks), using the weights set
+            for that CO on the assessment components page.
           </p>
           <p>
-            Level 1 needs at least {settings.level1MinPercent}% of students to attain, Level 2
-            at least {settings.level2MinPercent}%, and Level 3 at least{" "}
-            {settings.level3MinPercent}%. Below Level 1 is shown as Level 0. Absent students
-            are {settings.absentAsZero ? "counted as 0 marks" : "left out"}.
+            Student level: Level 3 at {percentOf(settings.studentLevel3Min)}% or more, Level 2 at{" "}
+            {percentOf(settings.studentLevel2Min)}% or more, otherwise Level 1. Absent students are{" "}
+            {settings.absentAsZero ? "counted as 0 marks" : "left out"}.
+          </p>
+          <p>
+            <strong>CO attainment</strong> is the average of the student levels.{" "}
+            <strong>Target attainment level</strong>: Level 3 when {settings.courseLevel3MinPercent}%
+            or more of the students are at Level 3, Level 2 at {settings.courseLevel2MinPercent}% or
+            more, otherwise Level 1. Overall course attainment is the sum of (target level x CO
+            weight).
           </p>
         </CardContent>
       </Card>
 
       <SettingsForm
-        key={JSON.stringify(settings)}
+        key={JSON.stringify([formSettings, formOutcomes])}
         courseFileId={id}
-        settings={settings}
+        settings={formSettings}
+        outcomes={formOutcomes}
         readOnly={readOnly}
       />
 
@@ -92,7 +116,7 @@ export default async function AttainmentPage({ params }) {
                 </Link>
                 {" · "}
                 <Link href={`/coordinator/course-files/${id}/assessments`} className="underline">
-                  Assessment components
+                  Assessment components and weights
                 </Link>
                 {" · "}
                 <Link href={`/marks/${id}`} className="underline">
@@ -112,8 +136,14 @@ export default async function AttainmentPage({ params }) {
                       <th key={row.outcomeId} className="p-2 text-center">
                         {row.code}
                         <div className="text-xs font-normal text-muted-foreground">
-                          {row.componentNames.length > 0
-                            ? row.componentNames.join(", ")
+                          {row.componentWeights.length > 0
+                            ? row.componentWeights
+                                .map((item) =>
+                                  item.weightPercent === null
+                                    ? `${item.name} (no weight)`
+                                    : `${item.name} ${item.weightPercent}%`
+                                )
+                                .join(", ")
                             : "no component"}
                         </div>
                       </th>
@@ -122,32 +152,46 @@ export default async function AttainmentPage({ params }) {
                 </thead>
                 <tbody>
                   <tr className="border-t">
-                    <td className="p-2">No. of students who attained</td>
+                    <td className="p-2">Students at Level 3</td>
                     {result.rows.map((row) => (
                       <td key={row.outcomeId} className="p-2 text-center">
-                        {row.percentage === null ? "-" : `${row.attained} of ${row.assessed}`}
+                        {row.level === null ? "-" : `${row.attained} of ${row.assessed}`}
                       </td>
                     ))}
                   </tr>
                   <tr className="border-t">
-                    <td className="p-2">% of students who attained</td>
+                    <td className="p-2">% of students at Level 3</td>
                     {result.rows.map((row) => (
                       <td key={row.outcomeId} className="p-2 text-center">
-                        {row.percentage === null ? "-" : `${row.percentage.toFixed(2)}%`}
+                        {row.level === null ? "-" : `${row.percentage.toFixed(2)}%`}
                       </td>
                     ))}
                   </tr>
-                  <tr className="border-t font-medium">
-                    <td className="p-2">Attainment level</td>
+                  <tr className="border-t">
+                    <td className="p-2">Target attainment level</td>
                     {result.rows.map((row) => (
                       <td key={row.outcomeId} className="p-2 text-center">
                         {row.level === null ? "-" : row.level}
                       </td>
                     ))}
                   </tr>
+                  <tr className="border-t font-medium">
+                    <td className="p-2">CO attainment (average of student levels)</td>
+                    {result.rows.map((row) => (
+                      <td key={row.outcomeId} className="p-2 text-center">
+                        {row.average === null ? "-" : row.average.toFixed(2)}
+                      </td>
+                    ))}
+                  </tr>
                 </tbody>
               </table>
             </div>
+          )}
+
+          {result.overall !== null && (
+            <p className="text-sm">
+              <strong>Overall course attainment:</strong> {result.overall.toFixed(2)}
+            </p>
           )}
 
           {result.students.length > 0 && result.rows.length > 0 && (
@@ -177,9 +221,7 @@ export default async function AttainmentPage({ params }) {
                           const cell = student.perCo[row.outcomeId];
                           return (
                             <td key={row.outcomeId} className="p-2 text-center">
-                              {!cell || cell.percent === null
-                                ? "-"
-                                : `${cell.percent}% ${cell.attained ? "✓" : "✗"}`}
+                              {cell ? `${cell.percent}% (Level ${cell.level})` : "-"}
                             </td>
                           );
                         })}

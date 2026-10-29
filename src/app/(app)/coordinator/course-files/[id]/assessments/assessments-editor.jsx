@@ -21,6 +21,8 @@ export default function AssessmentsEditor(props) {
   );
 }
 
+const emptyRow = () => ({ id: null, name: "", maxMarks: "", courseOutcomeIds: [], outcomeWeights: {} });
+
 function AssessmentsForm({
   courseFileId,
   readOnly,
@@ -33,20 +35,17 @@ function AssessmentsForm({
   const counter = useRef(0);
   const makeRow = (values) => {
     counter.current += 1;
-    return { key: `row-${counter.current}`, markCount: 0, ...values };
+    return { key: `row-${counter.current}`, markCount: 0, outcomeWeights: {}, ...values };
   };
 
   const [rows, setRows] = useState(() =>
     components.length > 0
       ? components.map((component) => makeRow(component))
-      : [makeRow({ id: null, name: "", maxMarks: "", courseOutcomeIds: [] })]
+      : [makeRow(emptyRow())]
   );
 
   function addRow() {
-    setRows((current) => [
-      ...current,
-      makeRow({ id: null, name: "", maxMarks: "", courseOutcomeIds: [] }),
-    ]);
+    setRows((current) => [...current, makeRow(emptyRow())]);
   }
 
   function removeRow(row) {
@@ -66,11 +65,33 @@ function AssessmentsForm({
   }
 
   function toggleOutcome(row, outcomeId) {
-    const selected = row.courseOutcomeIds.includes(outcomeId)
+    const selected = row.courseOutcomeIds.includes(outcomeId);
+    const courseOutcomeIds = selected
       ? row.courseOutcomeIds.filter((id) => id !== outcomeId)
       : [...row.courseOutcomeIds, outcomeId];
-    update(row.key, { courseOutcomeIds: selected });
+    const outcomeWeights = { ...row.outcomeWeights };
+    if (selected) delete outcomeWeights[outcomeId];
+    update(row.key, { courseOutcomeIds, outcomeWeights });
   }
+
+  function setWeight(row, outcomeId, value) {
+    update(row.key, { outcomeWeights: { ...row.outcomeWeights, [outcomeId]: value } });
+  }
+
+  // Total weight per CO across all components, to show whether it reaches 100%.
+  const totals = outcomes.map((outcome) => {
+    let sum = 0;
+    let count = 0;
+    let missing = false;
+    for (const row of rows) {
+      if (!row.courseOutcomeIds.includes(outcome.id)) continue;
+      count += 1;
+      const raw = row.outcomeWeights[outcome.id];
+      if (raw === undefined || raw === "") missing = true;
+      else sum += Number(raw);
+    }
+    return { outcome, count, sum: Math.round(sum * 100) / 100, missing };
+  });
 
   const payload = JSON.stringify({
     courseFileId,
@@ -79,6 +100,12 @@ function AssessmentsForm({
       name: row.name,
       maxMarks: row.maxMarks === "" ? null : Number(row.maxMarks),
       courseOutcomeIds: row.courseOutcomeIds,
+      outcomeWeights: Object.fromEntries(
+        row.courseOutcomeIds.map((outcomeId) => {
+          const raw = row.outcomeWeights[outcomeId];
+          return [outcomeId, raw === undefined || raw === "" ? null : Number(raw)];
+        })
+      ),
     })),
   });
 
@@ -96,8 +123,9 @@ function AssessmentsForm({
         <CardHeader>
           <CardTitle>Components</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Tick the Course Outcomes each component assesses. A component with no
-            Course Outcome will not count towards attainment.
+            Tick the Course Outcomes each component assesses and enter its weight (in %) for each
+            of them. For every Course Outcome, the weights of its components must add up to 100%. A
+            component with no Course Outcome will not count towards attainment.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -141,17 +169,38 @@ function AssessmentsForm({
                 )}
               </div>
               <div className="flex flex-wrap gap-4 text-sm">
-                {outcomes.map((outcome) => (
-                  <label key={outcome.id} className="flex items-center gap-1">
-                    <input
-                      type="checkbox"
-                      checked={row.courseOutcomeIds.includes(outcome.id)}
-                      onChange={() => toggleOutcome(row, outcome.id)}
-                      disabled={readOnly}
-                    />
-                    {outcome.code}
-                  </label>
-                ))}
+                {outcomes.map((outcome) => {
+                  const ticked = row.courseOutcomeIds.includes(outcome.id);
+                  return (
+                    <div key={outcome.id} className="flex items-center gap-2">
+                      <label className="flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={ticked}
+                          onChange={() => toggleOutcome(row, outcome.id)}
+                          disabled={readOnly}
+                        />
+                        {outcome.code}
+                      </label>
+                      {ticked && (
+                        <span className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="any"
+                            aria-label={`${outcome.code} weight of component ${index + 1} (%)`}
+                            value={row.outcomeWeights[outcome.id] ?? ""}
+                            onChange={(event) => setWeight(row, outcome.id, event.target.value)}
+                            disabled={readOnly}
+                            className="h-8 w-20"
+                          />
+                          %
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -166,6 +215,26 @@ function AssessmentsForm({
               Add component
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Weight check</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1 text-sm">
+          {totals.map(({ outcome, count, sum, missing }) => {
+            let text;
+            if (count === 0) text = "no component yet";
+            else if (missing) text = "some weights are still empty";
+            else if (Math.abs(sum - 100) <= 0.01) text = `${sum}% (complete)`;
+            else text = `${sum}% (must be 100%)`;
+            return (
+              <p key={outcome.id}>
+                <strong>{outcome.code}:</strong> {text}
+              </p>
+            );
+          })}
         </CardContent>
       </Card>
 

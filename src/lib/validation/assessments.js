@@ -21,6 +21,22 @@ export const saveAssessmentsSchema = z
               "Maximum marks can have at most 2 decimals."
             ),
           courseOutcomeIds: z.array(z.string().min(1)).max(20),
+          // Weight of this component for each CO it assesses, in percent.
+          // Empty means "not entered yet"; the attainment page asks for it.
+          outcomeWeights: z
+            .record(
+              z.string(),
+              z
+                .number("Weights must be numbers.")
+                .min(0, "Weights cannot be below 0%.")
+                .max(100, "Weights cannot be above 100%.")
+                .refine(
+                  (value) => Math.round(value * 100) / 100 === value,
+                  "Weights can have at most 2 decimals."
+                )
+                .nullable()
+            )
+            .optional(),
         })
       )
       .min(1, "Add at least one component.")

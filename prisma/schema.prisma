@@ -395,10 +395,6 @@ model Mark {
 model AttainmentSetting {
   courseFileId           String     @id
   courseFile             CourseFile @relation(fields: [courseFileId], references: [id], onDelete: Cascade)
-  thresholdPercent       Decimal    @db.Decimal(5, 2)
-  level1MinPercent       Decimal    @db.Decimal(5, 2)
-  level2MinPercent       Decimal    @db.Decimal(5, 2)
-  level3MinPercent       Decimal    @db.Decimal(5, 2)
   absentAsZero           Boolean
   studentLevel3Min       Decimal    @default(0.5000) @db.Decimal(5, 4)
   studentLevel2Min       Decimal    @default(0.4500) @db.Decimal(5, 4)

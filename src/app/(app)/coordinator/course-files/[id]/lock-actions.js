@@ -126,6 +126,7 @@ export async function lockCourseFileAction(previousState, formData) {
                     calculatedAt: new Date().toISOString(),
                     settings: attainment.settings,
                     rows: attainment.rows,
+                    overall: attainment.overall,
                   },
                   status: "APPROVED",
                   approvedAt: new Date(),

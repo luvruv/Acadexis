@@ -1,154 +1,203 @@
 import { describe, expect, it } from "vitest";
 import {
-  computeAttainment,
   DEFAULT_ATTAINMENT_SETTINGS,
-  levelFor,
+  computeAttainment,
+  suggestedCoWeightPercents,
 } from "@/lib/attainment";
 
 const settings = { ...DEFAULT_ATTAINMENT_SETTINGS };
 
-function marks(entries) {
+// HCI-style components: Lab-1 and Lab-II out of 30, End Term out of 40.
+const components = (links1, links2, links3) => [
+  { id: "lab1", name: "Lab-1", maxMarks: 30, links: links1 },
+  { id: "lab2", name: "Lab-II", maxMarks: 30, links: links2 },
+  { id: "end", name: "End Term", maxMarks: 40, links: links3 },
+];
+const link = (outcomeId, weight) => ({ outcomeId, weight });
+
+const students = ["a", "b", "c", "d"].map((id) => ({ id, enrollmentNo: `E-${id}`, name: id }));
+
+function marksFor(rows) {
   const map = new Map();
-  for (const [studentId, componentId, value] of entries) {
-    map.set(
-      `${studentId}:${componentId}`,
-      value === "AB" ? { value: null, absent: true } : { value, absent: false }
-    );
+  for (const [studentId, lab1, lab2, end] of rows) {
+    map.set(`${studentId}:lab1`, { value: lab1, absent: lab1 === null });
+    map.set(`${studentId}:lab2`, { value: lab2, absent: lab2 === null });
+    map.set(`${studentId}:end`, { value: end, absent: end === null });
   }
   return map;
 }
 
-const outcomes = [{ id: "co1", code: "CO1" }];
-const students = ["s1", "s2", "s3", "s4"].map((id, i) => ({
-  id,
-  enrollmentNo: `ENR${i + 1}`,
-  name: `Student ${i + 1}`,
-}));
-const quiz = { id: "q", name: "Quiz 1", maxMarks: 10, outcomeIds: ["co1"] };
+// CO1 weights 0.4, 0.4, 0.2 (weighted maximum 32): fractions 0.70625, 0.5, 0.4625, 0.3625
+const defaultMarks = marksFor([
+  ["a", 22, 22, 25],
+  ["b", 15, 15, 20],
+  ["c", 14, 14, 18],
+  ["d", 12, 12, 10],
+]);
 
-describe("levelFor", () => {
-  it("uses the provisional minimums 50, 60 and 70", () => {
-    expect(levelFor(49.99, settings)).toBe(0);
-    expect(levelFor(50, settings)).toBe(1);
-    expect(levelFor(59.99, settings)).toBe(1);
-    expect(levelFor(60, settings)).toBe(2);
-    expect(levelFor(70, settings)).toBe(3);
-    expect(levelFor(100, settings)).toBe(3);
-  });
-
-  it("respects changed settings", () => {
-    const custom = { ...settings, level1MinPercent: 30, level2MinPercent: 40, level3MinPercent: 80 };
-    expect(levelFor(35, custom)).toBe(1);
-    expect(levelFor(79, custom)).toBe(2);
-    expect(levelFor(80, custom)).toBe(3);
-  });
-});
-
-describe("computeAttainment: the hand-checked example", () => {
-  const input = {
-    outcomes,
-    components: [quiz],
+function run(overrides = {}) {
+  return computeAttainment({
+    outcomes: [{ id: "co1", code: "CO1", weight: 1 }],
+    components: components([link("co1", 0.4)], [link("co1", 0.4)], [link("co1", 0.2)]),
     students,
-    marks: marks([["s1", "q", 5], ["s2", "q", 3], ["s3", "q", 8], ["s4", "q", "AB"]]),
-  };
+    marks: defaultMarks,
+    settings,
+    ...overrides,
+  });
+}
 
-  it("counts an absent student as 0 by default: 2 of 4, 50%, Level 1", () => {
-    const result = computeAttainment({ ...input, settings });
+describe("computeAttainment", () => {
+  it("calculates student levels, the average, the target level and the overall value", () => {
+    const result = run();
+    expect(result.problems).toEqual([]);
     expect(result.ready).toBe(true);
-    expect(result.rows[0]).toMatchObject({ attained: 2, assessed: 4, percentage: 50, level: 1 });
-    expect(result.students.map((s) => s.perCo.co1.percent)).toEqual([50, 30, 80, 0]);
-    expect(result.students.map((s) => s.perCo.co1.attained)).toEqual([true, false, true, false]);
+    const row = result.rows[0];
+    expect(row.counts).toEqual({ 1: 1, 2: 1, 3: 2 });
+    expect(row.attained).toBe(2);
+    expect(row.assessed).toBe(4);
+    expect(row.percentage).toBe(50);
+    expect(row.level).toBe(1); // 50% of students at Level 3 is below the 65% target
+    expect(row.average).toBe(2.25);
+    expect(result.overall).toBe(1);
+    expect(result.students[2].perCo.co1).toEqual({ percent: 46.25, level: 2 });
   });
 
-  it("can leave absent students out: 2 of 3, 66.67%, Level 2", () => {
-    const result = computeAttainment({ ...input, settings: { ...settings, absentAsZero: false } });
-    expect(result.rows[0]).toMatchObject({ attained: 2, assessed: 3, percentage: 66.67, level: 2 });
-    expect(result.students[3].perCo.co1).toEqual({ percent: null, attained: null });
-  });
-
-  it("changes with the threshold: 60% leaves 1 of 3, 33.33%, Level 0", () => {
-    const result = computeAttainment({
-      ...input,
-      settings: { ...settings, absentAsZero: false, thresholdPercent: 60 },
+  it("gives Level 3 when at least 70 percent of students are at Level 3", () => {
+    const result = run({
+      marks: marksFor([
+        ["a", 22, 22, 25],
+        ["b", 22, 22, 25],
+        ["c", 22, 22, 25],
+        ["d", 12, 12, 10],
+      ]),
     });
-    expect(result.rows[0]).toMatchObject({ attained: 1, assessed: 3, percentage: 33.33, level: 0 });
-  });
-
-  it("treats a score exactly on the threshold as attained", () => {
-    const result = computeAttainment({
-      outcomes,
-      components: [quiz],
-      students: [students[0]],
-      marks: marks([["s1", "q", 4]]), // 40% with a 40% threshold
-      settings,
-    });
-    expect(result.rows[0].attained).toBe(1);
-  });
-});
-
-describe("computeAttainment: several components", () => {
-  it("weights components by their maximum marks (internal 60 + external 40)", () => {
-    const components = [
-      { id: "mid", name: "Midterm", maxMarks: 60, outcomeIds: ["co1"] },
-      { id: "end", name: "End Term", maxMarks: 40, outcomeIds: ["co1"] },
-    ];
-    // 30/60 + 10/40 = 40/100 = 40%: exactly the pass mark
-    const result = computeAttainment({
-      outcomes,
-      components,
-      students: [students[0], students[1]],
-      marks: marks([["s1", "mid", 30], ["s1", "end", 10], ["s2", "mid", 30], ["s2", "end", 9]]),
-      settings,
-    });
-    expect(result.students[0].perCo.co1).toEqual({ percent: 40, attained: true });
-    expect(result.students[1].perCo.co1).toEqual({ percent: 39, attained: false });
-  });
-
-  it("only uses the components mapped to each CO", () => {
-    const result = computeAttainment({
-      outcomes: [{ id: "co1", code: "CO1" }, { id: "co2", code: "CO2" }],
-      components: [
-        { id: "a", name: "A", maxMarks: 10, outcomeIds: ["co1"] },
-        { id: "b", name: "B", maxMarks: 10, outcomeIds: ["co2"] },
-      ],
-      students: [students[0]],
-      marks: marks([["s1", "a", 10], ["s1", "b", 0]]),
-      settings,
-    });
+    expect(result.rows[0].percentage).toBe(75);
     expect(result.rows[0].level).toBe(3);
-    expect(result.rows[1].level).toBe(0);
+    expect(result.overall).toBe(3);
+  });
+
+  it("uses the thresholds of the course file", () => {
+    const strict = { ...settings, studentLevel3Min: 0.75, studentLevel2Min: 0.5 };
+    const result = run({ settings: strict });
+    // fractions 0.70625, 0.5, 0.4625, 0.3625 -> levels 2, 2, 1, 1
+    expect(result.rows[0].counts).toEqual({ 1: 2, 2: 2, 3: 0 });
+    expect(result.rows[0].average).toBe(1.5);
+  });
+
+  it("combines the overall weights of several outcomes", () => {
+    const result = computeAttainment({
+      outcomes: [
+        { id: "co1", code: "CO1", weight: 0.6 },
+        { id: "co2", code: "CO2", weight: 0.4 },
+      ],
+      components: components(
+        [link("co1", 0.5), link("co2", 1)],
+        [link("co1", 0.5)],
+        []
+      ),
+      students: students.slice(0, 2),
+      marks: marksFor([
+        ["a", 30, 30, 0],
+        ["b", 30, 30, 0],
+        ["c", 0, 0, 0],
+        ["d", 0, 0, 0],
+      ]),
+      settings,
+    });
+    expect(result.problems).toEqual([]);
+    expect(result.rows.map((row) => row.level)).toEqual([3, 3]);
+    expect(result.overall).toBe(3);
+  });
+
+  it("treats a missing or absent mark as zero by default", () => {
+    const marks = new Map(defaultMarks);
+    marks.set("d:lab1", { value: null, absent: true });
+    const result = run({ marks });
+    expect(result.rows[0].assessed).toBe(4);
+  });
+
+  it("can leave absent students out", () => {
+    const marks = new Map(defaultMarks);
+    marks.set("d:lab1", { value: null, absent: true });
+    const result = run({ marks, settings: { ...settings, absentAsZero: false } });
+    expect(result.rows[0].assessed).toBe(3);
+    expect(result.rows[0].counts).toEqual({ 1: 0, 2: 1, 3: 2 });
   });
 });
 
 describe("computeAttainment: problems", () => {
-  it("reports missing setup", () => {
-    const result = computeAttainment({ outcomes: [], components: [], students: [], marks: new Map(), settings });
-    expect(result.ready).toBe(false);
-    expect(result.problems).toHaveLength(3);
-  });
-
-  it("reports missing marks and a CO without a component", () => {
+  it("asks for outcomes, components and students first", () => {
     const result = computeAttainment({
-      outcomes: [{ id: "co1", code: "CO1" }, { id: "co2", code: "CO2" }],
-      components: [quiz],
-      students,
-      marks: marks([["s1", "q", 5]]),
-      settings,
+      outcomes: [], components: [], students: [], marks: new Map(), settings,
     });
     expect(result.ready).toBe(false);
-    expect(result.problems).toContain("3 mark(s) are not entered yet.");
+    expect(result.problems).toEqual([
+      "Define the course outcomes first.",
+      "Define the assessment components first.",
+      "The student list is empty.",
+    ]);
+  });
+
+  it("reports marks that are not entered", () => {
+    const marks = new Map(defaultMarks);
+    marks.delete("a:end");
+    expect(run({ marks }).problems).toContain("1 mark(s) are not entered yet.");
+  });
+
+  it("reports an outcome without a component", () => {
+    const result = run({
+      outcomes: [
+        { id: "co1", code: "CO1", weight: 0.5 },
+        { id: "co2", code: "CO2", weight: 0.5 },
+      ],
+    });
+    expect(result.ready).toBe(false);
     expect(result.problems).toContain("CO2 has no assessment component mapped to it.");
-    expect(result.rows[1]).toMatchObject({ percentage: null, level: null });
   });
 
-  it("does not require marks for components mapped to no CO", () => {
-    const result = computeAttainment({
-      outcomes,
-      components: [quiz, { id: "x", name: "Unused", maxMarks: 5, outcomeIds: [] }],
-      students: [students[0]],
-      marks: marks([["s1", "q", 9]]),
-      settings,
+  it("reports weights that do not add up to 100 percent", () => {
+    const result = run({
+      components: components([link("co1", 0.4)], [link("co1", 0.4)], [link("co1", 0.1)]),
     });
-    expect(result.ready).toBe(true);
+    expect(result.ready).toBe(false);
+    expect(result.problems).toContain("CO1: component weights add up to 90%, not 100%.");
+    expect(result.rows[0].level).toBeNull();
+  });
+
+  it("reports a missing component weight", () => {
+    const result = run({
+      components: components([link("co1", null)], [link("co1", 0.5)], [link("co1", 0.5)]),
+    });
+    expect(result.problems).toContain("CO1 has a component with a missing or negative weight.");
+  });
+
+  it("asks for the overall CO weights", () => {
+    const result = run({ outcomes: [{ id: "co1", code: "CO1", weight: null }] });
+    expect(result.ready).toBe(false);
+    expect(result.problems).toContain(
+      "Enter the overall weight of every course outcome on the CO attainment page."
+    );
+    expect(result.overall).toBeNull();
+  });
+
+  it("refuses CO weights that do not add up to 100 percent", () => {
+    const result = run({ outcomes: [{ id: "co1", code: "CO1", weight: 0.5 }] });
+    expect(result.ready).toBe(false);
+    expect(result.problems).toContain("Course outcome weights add up to 50%, not 100%.");
+  });
+});
+
+describe("suggestedCoWeightPercents", () => {
+  it("uses 35, 40 and 25 for three outcomes, as in the HCI workbook", () => {
+    expect(suggestedCoWeightPercents(3)).toEqual([35, 40, 25]);
+  });
+
+  it("splits equally for other numbers and always adds up to 100", () => {
+    for (const count of [1, 2, 4, 5, 6, 7]) {
+      const list = suggestedCoWeightPercents(count);
+      expect(list).toHaveLength(count);
+      expect(Math.round(list.reduce((a, b) => a + b, 0) * 100) / 100).toBe(100);
+    }
+    expect(suggestedCoWeightPercents(0)).toEqual([]);
   });
 });

@@ -195,8 +195,25 @@ export function buildSectionBody(section, assets = null) {
     case "co-attainment": {
       if (data.rows.length === 0) return note("Not calculated.");
       const settings = data.settings;
+      const isNew = data.rows[0].average !== undefined;
+      const pct = (fraction) => String(Math.round(fraction * 10000) / 100);
       let intro = "";
-      if (settings) {
+      if (settings && isNew) {
+        intro += note(
+          "For each CO, a student's score is the sum of (component weight x marks) divided by the sum of (component weight x maximum marks). " +
+            `A student is at Level 3 with ${pct(settings.studentLevel3Min)}% or more, at Level 2 with ${pct(settings.studentLevel2Min)}% or more, otherwise at Level 1. ` +
+            "CO attainment is the average of the student levels. " +
+            `The target attainment level is 3 when ${settings.courseLevel3MinPercent}% or more of the students are at Level 3, and 2 when ${settings.courseLevel2MinPercent}% or more are.`
+        );
+        if (!settings.confirmed) {
+          intro += paragraph(
+            run("These settings are not yet confirmed by the department.", {
+              bold: true,
+              color: "C00000",
+            })
+          );
+        }
+      } else if (settings) {
         intro += note(
           `A student attains a CO when the marks in the components mapped to it reach ${settings.thresholdPercent}% of the maximum. ` +
             `Level 1, 2 and 3 need at least ${settings.level1MinPercent}%, ${settings.level2MinPercent}% and ${settings.level3MinPercent}% of students to attain.`
@@ -211,21 +228,44 @@ export function buildSectionBody(section, assets = null) {
         }
       }
       const columns = ["Course Outcome", ...data.rows.map((row) => row.code)];
-      const rows = [
-        [
-          "No. of students who attained",
-          ...data.rows.map((row) => (row.percentage === null ? "-" : String(row.attained))),
-        ],
-        [
-          "% of students who attained",
-          ...data.rows.map((row) => (row.percentage === null ? "-" : row.percentage.toFixed(2))),
-        ],
-        [
-          "Attainment level",
-          ...data.rows.map((row) => (row.level === null ? "-" : String(row.level))),
-        ],
-      ];
-      return intro + table({ columns, rows, centerFrom: 1 });
+      const rows = isNew
+        ? [
+            [
+              "Students at Level 3",
+              ...data.rows.map((row) => (row.level === null ? "-" : `${row.attained} of ${row.assessed}`)),
+            ],
+            [
+              "% of students at Level 3",
+              ...data.rows.map((row) => (row.level === null ? "-" : row.percentage.toFixed(2))),
+            ],
+            [
+              "Target attainment level",
+              ...data.rows.map((row) => (row.level === null ? "-" : String(row.level))),
+            ],
+            [
+              "CO attainment (average of student levels)",
+              ...data.rows.map((row) => (row.average === null ? "-" : row.average.toFixed(2))),
+            ],
+          ]
+        : [
+            [
+              "No. of students who attained",
+              ...data.rows.map((row) => (row.percentage === null ? "-" : String(row.attained))),
+            ],
+            [
+              "% of students who attained",
+              ...data.rows.map((row) => (row.percentage === null ? "-" : row.percentage.toFixed(2))),
+            ],
+            [
+              "Attainment level",
+              ...data.rows.map((row) => (row.level === null ? "-" : String(row.level))),
+            ],
+          ];
+      let outro = "";
+      if (isNew && data.overall !== null && data.overall !== undefined) {
+        outro = paragraph(run(`Overall course attainment: ${data.overall.toFixed(2)}`, { bold: true }));
+      }
+      return intro + table({ columns, rows, centerFrom: 1 }) + outro;
     }
 
     case "form": {

@@ -98,29 +98,68 @@ describe("saveAssessmentsSchema", () => {
     expect(saveAssessmentsSchema.safeParse(body(many)).success).toBe(false);
   });
 });
-
 describe("attainmentSettingsSchema", () => {
   const valid = {
-    courseFileId: "cf", thresholdPercent: 40, level1MinPercent: 50, level2MinPercent: 60,
-    level3MinPercent: 70, absentAsZero: true, confirmed: false,
+    courseFileId: "cf",
+    studentLevel3MinPercent: 50,
+    studentLevel2MinPercent: 45,
+    courseLevel3MinPercent: 70,
+    courseLevel2MinPercent: 65,
+    absentAsZero: true,
+    confirmed: false,
+    coWeights: [
+      { courseOutcomeId: "a", weightPercent: 35 },
+      { courseOutcomeId: "b", weightPercent: 40 },
+      { courseOutcomeId: "c", weightPercent: 25 },
+    ],
   };
-  it("accepts the provisional defaults", () => {
+  it("accepts the HCI workbook defaults", () => {
     expect(attainmentSettingsSchema.safeParse(valid).success).toBe(true);
   });
-  it("requires the level minimums to increase", () => {
-    for (const bad of [
-      { level1MinPercent: 60 }, // equal to level 2
-      { level2MinPercent: 80 }, // above level 3
-      { level3MinPercent: 50 },
-    ]) {
-      const result = attainmentSettingsSchema.safeParse({ ...valid, ...bad });
-      expect(result.success).toBe(false);
-      expect(message(result)).toMatch(/must increase/);
+  it("accepts a course file with no outcomes yet", () => {
+    expect(attainmentSettingsSchema.safeParse({ ...valid, coWeights: [] }).success).toBe(true);
+  });
+  it("requires the student Level 2 minimum to be lower than Level 3", () => {
+    const result = attainmentSettingsSchema.safeParse({ ...valid, studentLevel2MinPercent: 50 });
+    expect(result.success).toBe(false);
+    expect(message(result)).toMatch(/Level 2 minimum must be lower/);
+  });
+  it("requires the course Level 2 target to be lower than Level 3", () => {
+    const result = attainmentSettingsSchema.safeParse({ ...valid, courseLevel2MinPercent: 75 });
+    expect(result.success).toBe(false);
+    expect(message(result)).toMatch(/Level 2 target must be lower/);
+  });
+  it("requires the CO weights to add up to 100 percent", () => {
+    const result = attainmentSettingsSchema.safeParse({
+      ...valid,
+      coWeights: [
+        { courseOutcomeId: "a", weightPercent: 50 },
+        { courseOutcomeId: "b", weightPercent: 40 },
+      ],
+    });
+    expect(result.success).toBe(false);
+    expect(message(result)).toMatch(/add up to 100%\. They add up to 90%/);
+  });
+  it("keeps percentages between 0 and 100, with at most 2 decimals, and rejects NaN", () => {
+    for (const bad of [101, -1, Number.NaN, 45.123]) {
+      expect(attainmentSettingsSchema.safeParse({ ...valid, studentLevel2MinPercent: bad }).success).toBe(false);
     }
   });
-  it("keeps percentages between 0 and 100 and rejects NaN", () => {
-    expect(attainmentSettingsSchema.safeParse({ ...valid, thresholdPercent: 101 }).success).toBe(false);
-    expect(attainmentSettingsSchema.safeParse({ ...valid, thresholdPercent: -1 }).success).toBe(false);
-    expect(attainmentSettingsSchema.safeParse({ ...valid, thresholdPercent: Number.NaN }).success).toBe(false);
+});
+
+describe("saveAssessmentsSchema: component weights", () => {
+  const body = (outcomeWeights) => ({
+    courseFileId: "cf",
+    components: [{ id: null, name: "Lab-1", maxMarks: 30, courseOutcomeIds: ["a"], outcomeWeights }],
+  });
+  it("accepts weights in percent, including empty ones", () => {
+    expect(saveAssessmentsSchema.safeParse(body({ a: 40 })).success).toBe(true);
+    expect(saveAssessmentsSchema.safeParse(body({ a: null })).success).toBe(true);
+    expect(saveAssessmentsSchema.safeParse(body(undefined)).success).toBe(true);
+  });
+  it("rejects weights outside 0 to 100 or with more than 2 decimals", () => {
+    for (const bad of [-1, 120, 33.333]) {
+      expect(saveAssessmentsSchema.safeParse(body({ a: bad })).success).toBe(false);
+    }
   });
 });

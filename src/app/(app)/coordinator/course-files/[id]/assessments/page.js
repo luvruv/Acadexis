@@ -18,7 +18,7 @@ export default async function AssessmentsPage({ params }) {
       assessmentComponents: {
         orderBy: { position: "asc" },
         include: {
-          courseOutcomes: { select: { courseOutcomeId: true } },
+          courseOutcomes: { select: { courseOutcomeId: true, weight: true } },
           _count: { select: { marks: true } },
         },
       },
@@ -31,6 +31,12 @@ export default async function AssessmentsPage({ params }) {
     name: component.name,
     maxMarks: String(Number(component.maxMarks)),
     courseOutcomeIds: component.courseOutcomes.map((link) => link.courseOutcomeId),
+    outcomeWeights: Object.fromEntries(
+      component.courseOutcomes.map((link) => [
+        link.courseOutcomeId,
+        link.weight === null ? "" : String(Math.round(Number(link.weight) * 10000) / 100),
+      ])
+    ),
     markCount: component._count.marks,
   }));
   const readOnly = courseFile.status === "LOCKED" || courseFile.status === "EXPORTED";
