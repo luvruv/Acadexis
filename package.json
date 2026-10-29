@@ -10,7 +10,9 @@
     "db:seed": "node prisma/seed.mjs",
     "db:seed-users": "node prisma/seed-users.mjs",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:test-setup": "node scripts/setup-test-db.mjs",
+    "test:integration": "vitest run --config vitest.integration.config.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
