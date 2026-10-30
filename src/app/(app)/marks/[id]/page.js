@@ -94,6 +94,7 @@ export default async function MarksPage({ params }) {
         students={courseFile.students.map((student) => ({
           id: student.id,
           enrollmentNo: student.enrollmentNo,
+          rollNo: student.rollNo,
           name: student.name,
         }))}
         components={courseFile.assessmentComponents.map((component) => ({

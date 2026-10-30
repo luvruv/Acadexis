@@ -5,6 +5,7 @@ import Papa from "papaparse";
 import { saveMarksAction } from "./actions";
 import { parseMarkValue } from "@/lib/validation/marks";
 import FormStatus from "@/components/form-status";
+import MaitriImport from "./maitri-import";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -173,6 +174,14 @@ function MarksForm({
 
       {readOnlyReason && (
         <p className="rounded-md border bg-muted p-3 text-sm">{readOnlyReason}</p>
+      )}
+
+      {!readOnly && (
+        <MaitriImport
+          students={students}
+          components={components}
+          onApply={(entries) => setValues((current) => ({ ...current, ...entries }))}
+        />
       )}
 
       {!readOnly && (
