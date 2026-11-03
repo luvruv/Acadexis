@@ -20,6 +20,15 @@ const SESSION_TYPES = ["Lecture", "Lab", "Tutorial"];
 const FORMS = {
   "course-description": {
     fields: [
+      // Optional details shown in the table at the top of the section.
+      { name: "credits", label: "Credits", rows: 1 },
+      { name: "contactHours", label: "Contact hours", rows: 1 },
+      { name: "semesterDuration", label: "Semester duration", rows: 1 },
+      { name: "faculty", label: "Course faculty (names and emails)", rows: 3 },
+      { name: "coordinatorName", label: "Course coordinator name", rows: 1 },
+      { name: "coordinatorEmail", label: "Course coordinator email", rows: 1 },
+      { name: "office", label: "Office", rows: 1 },
+      // In the document these are printed as "Course Overview and Context" and "Aim of the course".
       { name: "description", label: "Course description", required: true, rows: 8 },
       { name: "objectives", label: "Course objectives", required: true, rows: 6 },
     ],

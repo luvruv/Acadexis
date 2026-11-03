@@ -32,7 +32,12 @@ function buildFormData(definition, content, attachments) {
           rows: Array.isArray(value) ? value : [],
         };
       }
-      return { type: "text", label: field.label, value: typeof value === "string" ? value : "" };
+      return {
+        type: "text",
+        name: field.name,
+        label: field.label,
+        value: typeof value === "string" ? value : "",
+      };
     }),
     hasAttachments: Boolean(definition.attachments),
     attachments: attachments.map((attachment) => ({
@@ -228,6 +233,15 @@ export async function loadCourseFileDocument(db, courseFileId) {
       if (definition) {
         kind = "form";
         data = buildFormData(definition, section.content, section.attachments);
+        if (section.formKey === "course-description") {
+          // The details table of this section starts with facts taken from the course file.
+          data.headerRows = [
+            ["Course Code", header.courseCode],
+            ["Course Name", header.courseTitle],
+            ["Batch", header.batch ?? ""],
+            ["Academic Year", header.academicYear],
+          ].filter((row) => row[1] !== "");
+        }
       }
     }
 

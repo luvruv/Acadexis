@@ -27,7 +27,7 @@ describe("text sections", () => {
   it("accepts a complete submission and trims it", () => {
     const result = check("course-description", { description: "  A  ", objectives: " B " }, true);
     expect(result.success).toBe(true);
-    expect(result.data).toEqual({ description: "A", objectives: "B" });
+    expect(result.data).toMatchObject({ description: "A", objectives: "B" });
   });
 
   it("rejects text that is too long", () => {

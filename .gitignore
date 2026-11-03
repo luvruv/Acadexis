@@ -46,3 +46,5 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /tests/e2e/.run/
+Acadexis_Design_Documentation.pdf
+Acadexis_Design_Documentation.docx

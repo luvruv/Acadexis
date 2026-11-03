@@ -107,6 +107,31 @@ function tableFieldXml(field) {
   return xml;
 }
 
+const COURSE_DETAIL_FIELDS = [
+  ["credits", "Credits"],
+  ["contactHours", "Contact Hours"],
+  ["semesterDuration", "Semester Duration"],
+  ["faculty", "Course Faculty"],
+  ["coordinatorName", "Course Coordinator"],
+  ["coordinatorEmail", "Coordinator Email"],
+  ["office", "Office"],
+];
+
+// Section "Course Description and its objectives": a details table, then the aim
+// and the overview, as in the department's sample course file.
+function courseDescriptionXml(data) {
+  const byName = Object.fromEntries(data.fields.map((field) => [field.name, field]));
+  const rows = [...(data.headerRows ?? [])];
+  for (const [name, label] of COURSE_DETAIL_FIELDS) {
+    const value = byName[name]?.value ?? "";
+    if (value.trim() !== "") rows.push([label, value]);
+  }
+  let xml = rows.length > 0 ? table({ columns: ["Item", "Details"], rows, headerRow: false }) : "";
+  xml += heading("Aim of the course") + textOrNote(byName.objectives?.value ?? "");
+  xml += heading("Course Overview and Context") + textOrNote(byName.description?.value ?? "");
+  return xml;
+}
+
 // Builds the body of one section as WordprocessingML. The heading itself
 // ("7. Course Syllabus") comes from the Word template.
 // assets: the result of loadAttachmentAssets() (optional).
@@ -269,6 +294,7 @@ export function buildSectionBody(section, assets = null) {
     }
 
     case "form": {
+      if (section.formKey === "course-description") return courseDescriptionXml(data);
       let xml = "";
       for (const field of data.fields) {
         // The session plan reads as paragraphs and needs no field heading.

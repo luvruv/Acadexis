@@ -133,9 +133,9 @@ export async function saveStudentsAction(previousState, formData) {
       },
     });
 
-    
-     await syncMarksSection(prisma, courseFileId);
-    await refreshCourseFileStatus(courseFileId);idatePath(`/coordinator/course-files/${courseFileId}/students`);
+    await syncMarksSection(prisma, courseFileId);
+    await refreshCourseFileStatus(courseFileId);
+    revalidatePath(`/coordinator/course-files/${courseFileId}/students`);
     revalidatePath(`/coordinator/course-files/${courseFileId}`);
     return { ok: true, message: `Saved ${students.length} students.` };
   });
